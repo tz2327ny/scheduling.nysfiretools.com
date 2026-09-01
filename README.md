@@ -13,6 +13,8 @@ A standalone course and instructor coordination system for Jefferson, Lewis, St.
 - Statewide user management and county/organization administrator assignments
 - Instructor travel preferences
 - Instructor-entered preferred, tentative, and unavailable time windows
+- Monday–Sunday availability view with visible daily time windows
+- Repeating weekly availability rules with optional end dates
 - Purposed, confirmed, completed, and cancelled training
 - Unique Course Offering Numbers required before confirmation
 - Multi-session training dates

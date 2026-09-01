@@ -1,56 +1,35 @@
 {% extends 'base.html' %}
-
 {% block title %}{{ event.course.name }} · NYS Fire{% endblock %}
 {% block page_title %}{{ event.course.name }}{% endblock %}
-
 {% block content %}
 <section class="detail-hero">
-  <div>
-    <div class="detail-badges"><span class="course-code">Record {{ event.course.record_number }}</span>{% if event.offering_number %}<span class="course-code">Offering {{ event.offering_number }}</span>{% endif %}<span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div>
-    <p>{{ event.host_organization.name }} · {{ event.location_name }}</p>
-  </div>
-  <div class="toolbar-actions">
-    {% if event.acadis_registration_url %}<a class="button secondary" href="{{ event.acadis_registration_url }}" target="_blank" rel="noopener">Open Acadis registration ↗</a>{% endif %}
-    {% if can_manage %}<a class="button primary" href="{% url 'training_edit' event.pk %}">Edit training</a>{% endif %}
-  </div>
+  <div><div class="detail-badges"><span class="course-code">Record {{ event.course.record_number }}</span>{% if event.offering_number %}<span class="course-code">Offering {{ event.offering_number }}</span>{% endif %}<span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div><p>{{ event.host_organization.name }} · {{ event.location_name }}</p></div>
+  <div class="toolbar-actions">{% if event.acadis_registration_url %}<a class="button secondary" href="{{ event.acadis_registration_url }}" target="_blank" rel="noopener">Open Acadis registration ↗</a>{% endif %}{% if can_manage %}<a class="button primary" href="{% url 'training_edit' event.pk %}">Edit unit dates</a>{% endif %}</div>
 </section>
-
+{% if unscheduled_units %}<div class="notice-card warning-card"><span class="notice-icon">!</span><p><strong>{{ unscheduled_units }} unit{{ unscheduled_units|pluralize }} still need dates.</strong> Every active course unit must be scheduled before this offering can be Confirmed.</p></div>{% endif %}
 <section class="detail-grid">
   <div class="detail-main">
     {% for row in session_rows %}
-    <article class="panel session-card">
-      <div class="panel-header"><div><p class="eyebrow">Training session</p><h2>{{ row.session.starts_at|date:"l, F j, Y" }}</h2></div><strong class="session-time">{{ row.session.starts_at|date:"g:i A" }}–{{ row.session.ends_at|date:"g:i A" }}</strong></div>
+    <article class="panel session-card {% if not row.session.is_scheduled %}unscheduled{% endif %}">
+      <div class="panel-header">
+        <div><p class="eyebrow">{% if row.session.course_unit %}Unit {{ row.session.course_unit.unit_number }}{% else %}Training session{% endif %}</p><h2>{% if row.session.course_unit.title %}{{ row.session.course_unit.title }}{% elif row.session.is_scheduled %}{{ row.session.starts_at|date:"l, F j, Y" }}{% else %}Date required{% endif %}</h2></div>
+        <div class="unit-session-summary"><strong>{{ row.required_instructors }} instructor{{ row.required_instructors|pluralize }} required{% if row.requires_safety %} + safety officer{% endif %}</strong>{% if row.session.is_scheduled %}<span>{{ row.session.starts_at|date:"D, M j · g:i A" }}–{{ row.session.ends_at|date:"g:i A" }}</span>{% else %}<span class="status proposed">Unscheduled</span>{% endif %}</div>
+      </div>
       <div class="session-section">
-        <h3>Assigned instructors</h3>
+        <div class="section-title-line"><h3>Assigned to this unit</h3>{% if row.instructional_gap or row.safety_gap %}<span class="staffing-alert">{{ row.instructional_gap }} instructor{{ row.instructional_gap|pluralize }}{% if row.safety_gap %}{% if row.instructional_gap %} + {% endif %}safety officer{% endif %} needed</span>{% else %}<span class="staffing-ready">Staffed</span>{% endif %}</div>
         <div class="chip-list">
-          {% for assignment in row.assignments %}<span class="person-chip"><i class="avatar tiny">{{ assignment.instructor.first_name|first }}{{ assignment.instructor.last_name|first }}</i><span><strong>{{ assignment.instructor.full_name }}</strong><small>{{ assignment.get_role_display }} · {{ assignment.instructor.home_organization.short_name }}</small></span></span>{% empty %}<span class="muted">No instructors assigned.</span>{% endfor %}
+          {% for assignment in row.assignments %}<span class="person-chip"><i class="avatar tiny">{{ assignment.instructor.first_name|first }}{{ assignment.instructor.last_name|first }}</i><span><strong>{{ assignment.instructor.full_name }}</strong><small>{{ assignment.get_role_display }} · {{ assignment.instructor.home_organization.short_name }}</small></span>{% if can_manage %}<form method="post" action="{% url 'session_assignment_remove' event.pk row.session.pk assignment.pk %}">{% csrf_token %}<button class="icon-button" type="submit" aria-label="Remove {{ assignment.instructor.full_name }}">×</button></form>{% endif %}</span>{% empty %}<span class="muted">No instructors assigned to this unit.</span>{% endfor %}
         </div>
+        {% if row.assignment_form %}<form class="assignment-form" method="post" action="{% url 'session_assignment_add' event.pk row.session.pk %}">{% csrf_token %}<label><span>Authorized instructor</span>{{ row.assignment_form.instructor }}</label><label><span>Role</span>{{ row.assignment_form.role }}</label><span class="hidden-field">{{ row.assignment_form.confirmed }}</span><button class="button secondary" type="submit">Assign to unit</button></form>{% endif %}
       </div>
-      <div class="session-section eligible-section">
-        <div><h3>Qualified and currently available</h3><p>Filtered by course authorization, availability, existing assignments, and travel preference.</p></div>
-        <div class="candidate-list">
-          {% for instructor in row.eligible_assistants %}<span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %} · Regional{% endif %}{% if instructor.session_availability == 'available' %} · Preferred time{% elif instructor.session_availability == 'tentative' %} · Tentative{% endif %}</small></span>{% empty %}<span class="muted">No eligible instructors found.</span>{% endfor %}
-        </div>
-      </div>
+      {% if row.session.is_scheduled %}<div class="session-section eligible-section"><div><h3>Qualified and currently available</h3><p>Filtered by approved course authorization, availability, existing assignments, and travel preference.</p></div><div class="candidate-list">{% for instructor in row.eligible_assistants %}<span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %} · Regional{% endif %}{% if instructor.session_availability == 'available' %} · Preferred time{% elif instructor.session_availability == 'tentative' %} · Tentative{% endif %}</small></span>{% empty %}<span class="muted">No eligible instructors found.</span>{% endfor %}</div></div>{% endif %}
     </article>
-    {% empty %}<div class="empty-state panel">No sessions are scheduled.</div>{% endfor %}
+    {% empty %}<div class="empty-state panel">No course units are available.</div>{% endfor %}
   </div>
   <aside class="panel detail-aside">
-    <p class="eyebrow">Course staffing</p>
-    <h2>1 primary instructor</h2>
-    <dl class="detail-list">
-      <div><dt>Additional instructors</dt><dd>{% if event.course.instructor_intensive %}Varies by course unit{% else %}See course matrix{% endif %}</dd></div>
-      <div><dt>Course units</dt><dd>{{ event.course.number_of_units|default:"Not listed" }}</dd></div>
-      <div><dt>Student contact hours</dt><dd>{{ event.course.student_contact_hours|default:"Not listed" }}</dd></div>
-      <div><dt>Course record number</dt><dd>{{ event.course.record_number }}</dd></div>
-      <div><dt>Course offering number</dt><dd>{{ event.offering_number|default:"Not assigned" }}</dd></div>
-      <div><dt>Host</dt><dd>{{ event.host_organization.short_name }}</dd></div>
-      <div><dt>Location</dt><dd>{{ event.location_name }}</dd></div>
-      {% if event.contact_name %}<div><dt>Course contact</dt><dd>{{ event.contact_name }}</dd></div>{% endif %}
-    </dl>
-    {% if event.course.instructor_requirements %}<div class="matrix-note"><strong>Instructor matrix</strong><p>{{ event.course.instructor_requirements|linebreaksbr }}</p></div>{% endif %}
-    {% if event.course.safety_officer_requirements %}<div class="matrix-note"><strong>Safety officer</strong><p>{{ event.course.safety_officer_requirements|linebreaksbr }}</p></div>{% endif %}
-    {% if event.course.ems_requirements %}<div class="matrix-note"><strong>EMS</strong><p>{{ event.course.ems_requirements|linebreaksbr }}</p></div>{% endif %}
+    <p class="eyebrow">Unit staffing</p><h2>{{ total_required }} total position{{ total_required|pluralize }}</h2>
+    <dl class="detail-list"><div><dt>Filled positions</dt><dd>{{ total_filled }}</dd></div><div><dt>Open positions</dt><dd>{{ total_open }}</dd></div><div><dt>Units needing dates</dt><dd>{{ unscheduled_units }}</dd></div><div><dt>Course units</dt><dd>{{ event.course.units.count }}</dd></div><div><dt>Student contact hours</dt><dd>{{ event.course.student_contact_hours|default:"Not listed" }}</dd></div><div><dt>Course record number</dt><dd>{{ event.course.record_number }}</dd></div><div><dt>Course offering number</dt><dd>{{ event.offering_number|default:"Not assigned" }}</dd></div><div><dt>Host</dt><dd>{{ event.host_organization.short_name }}</dd></div><div><dt>Location</dt><dd>{{ event.location_name }}</dd></div></dl>
+    {% if event.course.instructor_requirements %}<div class="matrix-note"><strong>Original instructor matrix</strong><p>{{ event.course.instructor_requirements|linebreaksbr }}</p></div>{% endif %}{% if event.course.safety_officer_requirements %}<div class="matrix-note"><strong>Safety officer</strong><p>{{ event.course.safety_officer_requirements|linebreaksbr }}</p></div>{% endif %}
     <div class="notice-card"><span class="notice-icon">i</span><p><strong>Regional heads-up</strong>Other courses on nearby dates are informational. Only instructor double-booking is a hard conflict.</p></div>
   </aside>
 </section>

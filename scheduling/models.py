@@ -66,6 +66,44 @@ class Course(models.Model):
             )
 
 
+class CourseUnit(models.Model):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="units",
+    )
+    unit_number = models.PositiveSmallIntegerField()
+    title = models.CharField(max_length=180, blank=True)
+    required_instructors = models.PositiveSmallIntegerField(default=1)
+    requires_safety_officer = models.BooleanField(default=False)
+    notes = models.CharField(max_length=250, blank=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("unit_number",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("course", "unit_number"),
+                name="unique_course_unit_number",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(required_instructors__gte=1),
+                name="course_unit_requires_instructor",
+            ),
+        ]
+
+    @property
+    def display_name(self):
+        return f"Unit {self.unit_number}" + (f" — {self.title}" if self.title else "")
+
+    @property
+    def total_staff_required(self):
+        return self.required_instructors + int(self.requires_safety_officer)
+
+    def __str__(self):
+        return f"{self.course.record_number} — {self.display_name}"
+
+
 class Instructor(models.Model):
     class TravelPreference(models.TextChoices):
         CONTACT_ME = "contact", "Contact me as needed"
@@ -248,25 +286,54 @@ class TrainingSession(models.Model):
         on_delete=models.CASCADE,
         related_name="sessions",
     )
-    starts_at = models.DateTimeField()
-    ends_at = models.DateTimeField()
+    course_unit = models.ForeignKey(
+        CourseUnit,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="training_sessions",
+    )
+    starts_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
     location_override = models.CharField(max_length=180, blank=True)
 
     class Meta:
-        ordering = ("starts_at",)
+        ordering = ("course_unit__unit_number", "starts_at")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("event", "course_unit"),
+                condition=models.Q(course_unit__isnull=False),
+                name="unique_event_course_unit_session",
+            )
+        ]
 
     def clean(self):
-        if self.ends_at <= self.starts_at:
+        if bool(self.starts_at) != bool(self.ends_at):
+            raise ValidationError("Enter both a start and end date/time for this unit.")
+        if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
             raise ValidationError({"ends_at": "The session must end after it starts."})
+        if self.course_unit_id and self.event_id and self.course_unit.course_id != self.event.course_id:
+            raise ValidationError({"course_unit": "This unit does not belong to the selected course."})
+
+    @property
+    def is_scheduled(self):
+        return bool(self.starts_at and self.ends_at)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.event.course.record_number} — {self.starts_at:%b %d, %Y %I:%M %p}"
+        unit_label = self.course_unit.display_name if self.course_unit_id else "General session"
+        schedule_label = self.starts_at.strftime("%b %d, %Y %I:%M %p") if self.starts_at else "Unscheduled"
+        return f"{self.event.course.record_number} — {unit_label} — {schedule_label}"
 
 
 class InstructorAssignment(models.Model):
     class Role(models.TextChoices):
         LEAD = "lead", "Lead instructor"
         ASSISTANT = "assistant", "Assistant instructor"
+        SAFETY_OFFICER = "safety", "Safety officer"
 
     session = models.ForeignKey(
         TrainingSession,
@@ -294,6 +361,19 @@ class InstructorAssignment(models.Model):
     def clean(self):
         if not self.session_id or not self.instructor_id:
             return
+        if not self.session.is_scheduled:
+            raise ValidationError("Schedule this unit before assigning instructors.")
+        authorization = CourseAuthorization.objects.filter(
+            instructor=self.instructor,
+            course=self.session.event.course,
+            status=CourseAuthorization.Status.ACTIVE,
+        )
+        if self.role == self.Role.LEAD:
+            authorization = authorization.filter(can_lead=True)
+        elif self.role == self.Role.ASSISTANT:
+            authorization = authorization.filter(can_assist=True)
+        if not authorization.exists():
+            raise ValidationError("This instructor does not have an active authorization for this course and role.")
         conflicts = InstructorAssignment.objects.filter(
             instructor=self.instructor,
             confirmed=True,
@@ -378,6 +458,113 @@ class AvailabilityBlock(models.Model):
     @property
     def all_day_end_date(self):
         return timezone.localtime(self.ends_at - timedelta(microseconds=1)).date()
+
+
+class RecurringAvailabilityRule(models.Model):
+    WEEKDAY_CHOICES = (
+        ("0", "Monday"),
+        ("1", "Tuesday"),
+        ("2", "Wednesday"),
+        ("3", "Thursday"),
+        ("4", "Friday"),
+        ("5", "Saturday"),
+        ("6", "Sunday"),
+    )
+
+    instructor = models.ForeignKey(
+        Instructor,
+        on_delete=models.CASCADE,
+        related_name="recurring_availability_rules",
+    )
+    status = models.CharField(max_length=16, choices=AvailabilityBlock.Status.choices)
+    weekdays = models.CharField(
+        max_length=20,
+        help_text="Comma-separated weekday numbers where Monday is 0.",
+    )
+    all_day = models.BooleanField(default=False)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    starts_on = models.DateField()
+    ends_on = models.DateField(null=True, blank=True)
+    notes = models.CharField(max_length=250, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("starts_on", "start_time", "pk")
+
+    @property
+    def weekday_values(self):
+        return tuple(value for value in self.weekdays.split(",") if value)
+
+    @property
+    def weekday_labels(self):
+        labels = dict(self.WEEKDAY_CHOICES)
+        return tuple(labels[value] for value in self.weekday_values if value in labels)
+
+    @property
+    def weekday_summary(self):
+        values = self.weekday_values
+        if values == ("0", "1", "2", "3", "4"):
+            return "Monday–Friday"
+        if values == ("5", "6"):
+            return "Saturday–Sunday"
+        return ", ".join(self.weekday_labels)
+
+    def occurs_on(self, calendar_date):
+        return (
+            str(calendar_date.weekday()) in self.weekday_values
+            and calendar_date >= self.starts_on
+            and (self.ends_on is None or calendar_date <= self.ends_on)
+        )
+
+    def overlaps(self, starts_at, ends_at):
+        current_timezone = timezone.get_current_timezone()
+        local_start = timezone.localtime(starts_at, current_timezone)
+        local_end = timezone.localtime(ends_at, current_timezone)
+        final_date = (local_end - timedelta(microseconds=1)).date()
+        current_date = local_start.date()
+        while current_date <= final_date:
+            if self.occurs_on(current_date):
+                if self.all_day:
+                    return True
+                rule_start = timezone.make_aware(
+                    datetime.combine(current_date, self.start_time),
+                    current_timezone,
+                )
+                rule_end = timezone.make_aware(
+                    datetime.combine(current_date, self.end_time),
+                    current_timezone,
+                )
+                if rule_start < ends_at and rule_end > starts_at:
+                    return True
+            current_date += timedelta(days=1)
+        return False
+
+    def clean(self):
+        super().clean()
+        weekday_values = self.weekday_values
+        if not weekday_values or any(value not in dict(self.WEEKDAY_CHOICES) for value in weekday_values):
+            raise ValidationError({"weekdays": "Select at least one valid weekday."})
+        if len(set(weekday_values)) != len(weekday_values):
+            raise ValidationError({"weekdays": "Each weekday may only be selected once."})
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            raise ValidationError({"ends_on": "The end date cannot be before the start date."})
+        if self.all_day:
+            self.start_time = None
+            self.end_time = None
+        else:
+            if not self.start_time or not self.end_time:
+                raise ValidationError("Start and end times are required unless All day is selected.")
+            if self.end_time <= self.start_time:
+                raise ValidationError({"end_time": "The end time must be after the start time."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        self.weekdays = ",".join(sorted(set(self.weekday_values), key=int))
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.instructor} — {self.weekday_summary} ({self.get_status_display()})"
 
 
 class AssistanceRequest(models.Model):

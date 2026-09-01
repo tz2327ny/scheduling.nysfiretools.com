@@ -31,7 +31,7 @@
       <span>{{ instructor.get_travel_preference_display }}</span>
       <span>{{ instructor.authorization_count }}</span>
       <span>{{ instructor.upcoming_assignment_count }}</span>
-      <span class="row-actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} future entr{{ instructor.availability_count|pluralize:"y,ies" }}</small>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
+      <span class="row-actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} one-time · {{ instructor.recurring_availability_count }} weekly</small>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
     </div>
     {% empty %}<div class="empty-state">No instructors match this filter.</div>{% endfor %}
   </div>

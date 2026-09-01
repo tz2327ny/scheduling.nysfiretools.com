@@ -1,4 +1,18 @@
 (() => {
+  document.querySelectorAll("[data-recurring-form]").forEach((form) => {
+    const allDay = form.querySelector('input[name="all_day"]');
+    const timeFields = [...form.querySelectorAll("[data-recurring-time-field]")];
+    const updateRecurringTimes = () => {
+      timeFields.forEach((field) => {
+        field.hidden = Boolean(allDay?.checked);
+        const input = field.querySelector("input");
+        if (input) input.disabled = Boolean(allDay?.checked);
+      });
+    };
+    allDay?.addEventListener("change", updateRecurringTimes);
+    updateRecurringTimes();
+  });
+
   const calendar = document.querySelector("[data-availability-calendar]");
   if (!calendar) return;
 

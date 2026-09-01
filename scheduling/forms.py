@@ -5,7 +5,10 @@ from .models import (
     AvailabilityBlock,
     Course,
     CourseAuthorization,
+    CourseUnit,
     Instructor,
+    InstructorAssignment,
+    RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
 )
@@ -32,6 +35,66 @@ class AvailabilityBlockForm(forms.ModelForm):
             "status": "Availability status",
             "all_day": "All day",
         }
+
+
+class RecurringAvailabilityRuleForm(forms.ModelForm):
+    weekdays = forms.MultipleChoiceField(
+        choices=RecurringAvailabilityRule.WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Choose every weekday this schedule should repeat.",
+    )
+
+    class Meta:
+        model = RecurringAvailabilityRule
+        fields = (
+            "status",
+            "weekdays",
+            "all_day",
+            "start_time",
+            "end_time",
+            "starts_on",
+            "ends_on",
+            "notes",
+        )
+        widgets = {
+            "start_time": forms.TimeInput(attrs={"type": "time"}),
+            "end_time": forms.TimeInput(attrs={"type": "time"}),
+            "starts_on": forms.DateInput(attrs={"type": "date"}),
+            "ends_on": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.TextInput(
+                attrs={"placeholder": "e.g., Regular work schedule"}
+            ),
+        }
+        labels = {
+            "status": "Availability status",
+            "all_day": "All day",
+            "starts_on": "Effective starting",
+            "ends_on": "Stop repeating after",
+        }
+        help_texts = {
+            "ends_on": "Optional. Leave blank for an ongoing weekly schedule.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.initial["weekdays"] = self.instance.weekday_values
+
+    def clean_weekdays(self):
+        return ",".join(sorted(set(self.cleaned_data["weekdays"]), key=int))
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("all_day"):
+            cleaned["start_time"] = None
+            cleaned["end_time"] = None
+        elif not cleaned.get("start_time") or not cleaned.get("end_time"):
+            message = "Start and end times are required unless All day is selected."
+            if not cleaned.get("start_time"):
+                self.add_error("start_time", message)
+            if not cleaned.get("end_time"):
+                self.add_error("end_time", message)
+        return cleaned
 
 
 class CourseForm(forms.ModelForm):
@@ -72,6 +135,28 @@ class CourseForm(forms.ModelForm):
         }
 
 
+class CourseUnitForm(forms.ModelForm):
+    class Meta:
+        model = CourseUnit
+        fields = (
+            "unit_number",
+            "title",
+            "required_instructors",
+            "requires_safety_officer",
+            "notes",
+            "active",
+        )
+
+
+CourseUnitFormSet = inlineformset_factory(
+    Course,
+    CourseUnit,
+    form=CourseUnitForm,
+    extra=0,
+    can_delete=False,
+)
+
+
 class TrainingEventForm(forms.ModelForm):
     class Meta:
         model = TrainingEvent
@@ -95,27 +180,66 @@ class TrainingEventForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if managed_organizations is not None:
             self.fields["host_organization"].queryset = managed_organizations
+        if self.instance.pk:
+            self.fields["course"].disabled = True
+            self.fields["course"].help_text = "The course cannot be changed after unit scheduling begins."
 
 
 class TrainingSessionForm(forms.ModelForm):
     class Meta:
         model = TrainingSession
-        fields = ("starts_at", "ends_at", "location_override")
+        fields = ("course_unit", "starts_at", "ends_at", "location_override")
         widgets = {
+            "course_unit": forms.HiddenInput(),
             "starts_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
             "ends_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["starts_at"].required = False
+        self.fields["ends_at"].required = False
 
 
 TrainingSessionFormSet = inlineformset_factory(
     TrainingEvent,
     TrainingSession,
     form=TrainingSessionForm,
-    extra=1,
-    can_delete=True,
-    min_num=1,
-    validate_min=True,
+    extra=0,
+    can_delete=False,
 )
+
+
+class InstructorAssignmentForm(forms.ModelForm):
+    class Meta:
+        model = InstructorAssignment
+        fields = ("instructor", "role", "confirmed")
+
+    def __init__(self, *args, session, **kwargs):
+        from .services import eligible_instructors_for_session
+
+        self.session = session
+        super().__init__(*args, **kwargs)
+        self.instance.session = session
+        selected_role = self.data.get("role") if self.is_bound else None
+        eligibility_role = (
+            InstructorAssignment.Role.LEAD
+            if selected_role == InstructorAssignment.Role.LEAD
+            else InstructorAssignment.Role.ASSISTANT
+        )
+        eligible = eligible_instructors_for_session(session, eligibility_role).exclude(
+            assignments__session=session
+        )
+        self.fields["instructor"].queryset = eligible
+        role_choices = [
+            (InstructorAssignment.Role.LEAD, "Lead instructor"),
+            (InstructorAssignment.Role.ASSISTANT, "Additional instructor"),
+        ]
+        if session.course_unit and session.course_unit.requires_safety_officer:
+            role_choices.append(
+                (InstructorAssignment.Role.SAFETY_OFFICER, "Safety officer")
+            )
+        self.fields["role"].choices = role_choices
 
 
 class InstructorForm(forms.ModelForm):

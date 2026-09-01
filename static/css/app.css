@@ -170,6 +170,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .calendar-weekdays, .calendar-grid { min-width: 770px; display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); }
 .calendar-weekdays span { padding: 9px; border-right: 1px solid var(--slate-100); background: #f8fafb; color: var(--slate-500); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
 .availability-day { min-height: 116px; padding: 7px; border-top: 1px solid var(--slate-100); border-right: 1px solid var(--slate-100); background: white; transition: background-color .15s ease, box-shadow .15s ease; }
+.weekly-grid .availability-day { min-height: 245px; }
 .availability-day.selectable { cursor: pointer; }
 .availability-day.outside-month { background: #fafbfc; opacity: .48; }
 .availability-day.selected-range { background: #edf6fb; }
@@ -181,7 +182,11 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .availability-day.selectable:hover .calendar-day-select small { opacity: 1; }
 .availability-day.today .calendar-day-select span { background: var(--navy-800); color: white; }
 .calendar-entries { display: grid; gap: 4px; }
-.calendar-entry { overflow: hidden; padding: 5px 6px; border-radius: 5px; font-size: 8px; font-weight: 800; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-entry { overflow: hidden; display: block; padding: 6px 7px; border-radius: 5px; font-size: 8px; font-weight: 800; line-height: 1.25; }
+.calendar-entry strong, .calendar-entry small { display: block; overflow: hidden; text-overflow: ellipsis; }
+.calendar-entry strong { white-space: nowrap; }
+.calendar-entry small { margin-top: 2px; font-size: 7px; font-weight: 700; white-space: nowrap; opacity: .82; }
+.calendar-entry.recurring { border-left: 2px solid currentColor; }
 .calendar-entry.available { background: var(--green-100); color: var(--green-700); }
 .calendar-entry.tentative { background: var(--amber-100); color: var(--amber-700); }
 .calendar-entry.unavailable { background: var(--red-100); color: var(--red-700); }
@@ -206,6 +211,18 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .row-arrow { color: var(--blue-600); font-size: 16px; text-align: right; }
 .instructor-table .data-row { grid-template-columns: minmax(210px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) 90px 70px 130px; }
 .availability-table .data-row { grid-template-columns: 165px 170px 170px minmax(190px, 1fr) 60px; }
+.recurring-builder { margin-top: 18px; }
+.recurring-builder .panel-intro { padding-top: 14px; }
+.recurring-form-grid { display: grid; grid-template-columns: repeat(4, minmax(145px, 1fr)); align-items: end; gap: 13px; padding: 0 20px 20px; }
+.recurring-form-grid .weekday-picker { grid-column: span 3; }
+.recurring-form-grid .recurring-notes { grid-column: span 2; }
+.recurring-form-grid .field input:not([type="checkbox"]), .recurring-form-grid .field select { min-height: 38px; }
+.recurring-form-grid .weekday-picker > div { display: flex; flex-wrap: wrap; gap: 5px 9px; min-height: 38px; align-items: center; padding: 5px 8px; border: 1px solid var(--slate-300); border-radius: 8px; background: #fbfcfd; }
+.weekday-picker > div label { display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 650; }
+.weekday-picker small, .field > small { display: block; margin-top: 5px; color: var(--slate-500); font-size: 8px; font-weight: 500; line-height: 1.35; }
+.all-day-field input { width: 18px; height: 18px; }
+.recurring-table .data-row { grid-template-columns: 150px minmax(190px, 1fr) 150px minmax(170px, .8fr) 65px; }
+.recurring-edit-grid .weekday-picker > div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 11px; border: 1px solid var(--slate-300); border-radius: 8px; background: #fbfcfd; }
 .person-cell { display: flex; align-items: center; gap: 10px; }
 .avatar.small { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; font-style: normal; }
 .avatar.tiny { flex: 0 0 auto; width: 29px; height: 29px; border-radius: 50%; font-size: 9px; font-style: normal; }
@@ -274,6 +291,27 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue-600); outline: 3px solid rgba(35,107,155,.12); }
 .field em { display: block; margin-top: 5px; color: var(--red-700); font-size: 9px; font-style: normal; }
 .session-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 14px; align-items: end; padding: 16px 20px; border-top: 1px solid var(--slate-100); }
+.unit-session-form { display: grid; grid-template-columns: minmax(170px, 1.1fr) repeat(3, minmax(145px, 1fr)); gap: 14px; align-items: end; padding: 16px 20px; border-top: 1px solid var(--slate-100); }
+.unit-session-label { align-self: center; }
+.unit-session-label strong, .unit-session-label small, .unit-session-summary strong, .unit-session-summary span { display: block; }
+.unit-session-label strong { margin-top: 6px; font-size: 11px; }
+.unit-session-label small, .unit-session-summary span { margin-top: 3px; color: var(--slate-500); font-size: 9px; }
+.unit-session-summary { text-align: right; }
+.unit-session-summary strong { font-size: 10px; }
+.session-card.unscheduled { border-left: 3px solid var(--amber-500); }
+.section-title-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.staffing-alert, .staffing-ready { padding: 4px 8px; border-radius: 999px; font-size: 8px; font-weight: 800; }
+.staffing-alert { color: #9a3412; background: #ffedd5; }
+.staffing-ready { color: #166534; background: #dcfce7; }
+.assignment-form { display: grid; grid-template-columns: 1.5fr 1fr auto; align-items: end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--slate-100); }
+.assignment-form label span { display: block; margin-bottom: 5px; color: var(--slate-600); font-size: 8px; font-weight: 700; }
+.hidden-field { display: none; }
+.icon-button { border: 0; background: transparent; color: var(--slate-400); cursor: pointer; font-size: 17px; }
+.warning-card { margin: 0 0 16px; border-color: #fed7aa; background: #fff7ed; }
+.unit-table-wrap { overflow-x: auto; padding: 0 20px 20px; }
+.unit-table { width: 100%; border-collapse: collapse; }
+.unit-table th, .unit-table td { padding: 8px; border-bottom: 1px solid var(--slate-100); text-align: left; font-size: 9px; }
+.unit-table input[type="number"] { width: 75px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 9px; padding-bottom: 30px; }
 .form-errors { margin: 16px 20px 0; padding: 10px; border-radius: 8px; background: var(--red-100); color: var(--red-700); font-size: 10px; }
 
@@ -339,6 +377,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .card-grid { grid-template-columns: 1fr 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
+  .recurring-form-grid { grid-template-columns: 1fr 1fr; }
+  .recurring-form-grid .weekday-picker, .recurring-form-grid .recurring-notes { grid-column: span 2; }
 }
 
 @media (max-width: 760px) {
@@ -363,11 +403,13 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
   .calendar-selection { align-items: stretch; flex-direction: column; }
   .calendar-selection > span { justify-content: space-between; }
   .quick-form-fields { grid-template-columns: 1fr; }
+  .recurring-form-grid { grid-template-columns: 1fr; }
+  .recurring-form-grid .weekday-picker, .recurring-form-grid .recurring-notes { grid-column: auto; }
   .filter-bar { align-items: stretch; flex-direction: column; }
   .filter-bar label { min-width: 0; }
   .card-grid { grid-template-columns: 1fr; }
   .library-search > div { align-items: stretch; flex-direction: column; }
-  .form-grid, .registration-grid, .eligible-section, .candidate-list, .session-form { grid-template-columns: 1fr; }
+  .form-grid, .registration-grid, .eligible-section, .candidate-list, .session-form, .unit-session-form, .assignment-form { grid-template-columns: 1fr; }
   .field.wide { grid-column: auto; }
   .approval-row { grid-template-columns: 1fr; }
   .approval-actions .button { width: auto; }

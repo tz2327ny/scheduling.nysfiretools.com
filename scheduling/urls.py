@@ -29,6 +29,21 @@ urlpatterns = [
         name="availability_create",
     ),
     path(
+        "instructors/<int:pk>/availability/weekly/new/",
+        views.recurring_availability_create,
+        name="recurring_availability_create",
+    ),
+    path(
+        "instructors/<int:pk>/availability/weekly/<int:rule_pk>/edit/",
+        views.recurring_availability_edit,
+        name="recurring_availability_edit",
+    ),
+    path(
+        "instructors/<int:pk>/availability/weekly/<int:rule_pk>/delete/",
+        views.recurring_availability_delete,
+        name="recurring_availability_delete",
+    ),
+    path(
         "instructors/<int:pk>/availability/<int:entry_pk>/edit/",
         views.availability_edit,
         name="availability_edit",
@@ -41,4 +56,14 @@ urlpatterns = [
     path("training/new/", views.training_create, name="training_create"),
     path("training/<int:pk>/", views.training_detail, name="training_detail"),
     path("training/<int:pk>/edit/", views.training_edit, name="training_edit"),
+    path(
+        "training/<int:pk>/units/<int:session_pk>/assign/",
+        views.session_assignment_add,
+        name="session_assignment_add",
+    ),
+    path(
+        "training/<int:pk>/units/<int:session_pk>/assignments/<int:assignment_pk>/remove/",
+        views.session_assignment_remove,
+        name="session_assignment_remove",
+    ),
 ]

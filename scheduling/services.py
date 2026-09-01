@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db.models import Case, CharField, IntegerField, Q, Value, When
 from django.utils import timezone
 
@@ -6,11 +8,15 @@ from .models import (
     CourseAuthorization,
     Instructor,
     InstructorAssignment,
+    RecurringAvailabilityRule,
 )
 
 
 def eligible_instructors_for_session(session, role):
     """Return qualified instructors who are not unavailable or double-booked."""
+
+    if not session.is_scheduled:
+        return Instructor.objects.none()
 
     today = timezone.localdate()
     role_requirement = (
@@ -30,21 +36,37 @@ def eligible_instructors_for_session(session, role):
         | Q(course_authorizations__expiration_date__gte=today),
     )
 
-    unavailable_ids = AvailabilityBlock.objects.filter(
+    unavailable_ids = set(AvailabilityBlock.objects.filter(
         status=AvailabilityBlock.Status.UNAVAILABLE,
         starts_at__lt=session.ends_at,
         ends_at__gt=session.starts_at,
-    ).values_list("instructor_id", flat=True)
-    preferred_ids = AvailabilityBlock.objects.filter(
+    ).values_list("instructor_id", flat=True))
+    preferred_ids = set(AvailabilityBlock.objects.filter(
         status=AvailabilityBlock.Status.AVAILABLE,
         starts_at__lt=session.ends_at,
         ends_at__gt=session.starts_at,
-    ).values_list("instructor_id", flat=True)
-    tentative_ids = AvailabilityBlock.objects.filter(
+    ).values_list("instructor_id", flat=True))
+    tentative_ids = set(AvailabilityBlock.objects.filter(
         status=AvailabilityBlock.Status.TENTATIVE,
         starts_at__lt=session.ends_at,
         ends_at__gt=session.starts_at,
-    ).values_list("instructor_id", flat=True)
+    ).values_list("instructor_id", flat=True))
+    local_start = timezone.localtime(session.starts_at)
+    local_end = timezone.localtime(session.ends_at)
+    final_date = (local_end - timedelta(microseconds=1)).date()
+    recurring_rules = RecurringAvailabilityRule.objects.filter(
+        instructor_id__in=instructors.values("pk"),
+        starts_on__lte=final_date,
+    ).filter(Q(ends_on__isnull=True) | Q(ends_on__gte=local_start.date()))
+    for rule in recurring_rules:
+        if not rule.overlaps(session.starts_at, session.ends_at):
+            continue
+        if rule.status == AvailabilityBlock.Status.UNAVAILABLE:
+            unavailable_ids.add(rule.instructor_id)
+        elif rule.status == AvailabilityBlock.Status.AVAILABLE:
+            preferred_ids.add(rule.instructor_id)
+        elif rule.status == AvailabilityBlock.Status.TENTATIVE:
+            tentative_ids.add(rule.instructor_id)
     assigned_ids = InstructorAssignment.objects.filter(
         confirmed=True,
         session__starts_at__lt=session.ends_at,

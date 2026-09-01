@@ -49,8 +49,7 @@
       {% for event in upcoming %}
       <a class="training-row" href="{% url 'training_detail' event.pk %}">
         <div class="date-tile">
-          <span>{{ event.next_session|date:"M" }}</span>
-          <strong>{{ event.next_session|date:"d" }}</strong>
+          {% if event.next_session %}<span>{{ event.next_session|date:"M" }}</span><strong>{{ event.next_session|date:"d" }}</strong>{% else %}<span>Date</span><strong>TBD</strong>{% endif %}
         </div>
         <div class="training-main">
           <div class="training-title-line">
@@ -60,13 +59,15 @@
           </div>
           <p>{{ event.course.record_number }}{% if event.offering_number %} · Offering {{ event.offering_number }}{% endif %} · {{ event.host_organization.short_name }} · {{ event.location_name }}</p>
           <div class="training-meta">
-            <span>{{ event.next_session|date:"D, M j · g:i A" }}</span>
+            <span>{% if event.next_session %}{{ event.next_session|date:"D, M j · g:i A" }}{% else %}Unit dates not set{% endif %}</span>
             <span>{{ event.instructor_count }} instructor{{ event.instructor_count|pluralize }} assigned</span>
+            <span>{{ event.filled_positions }} of {{ event.required_positions }} unit positions filled</span>
+            {% if event.unscheduled_units %}<span>{{ event.unscheduled_units }} unit{{ event.unscheduled_units|pluralize }} need dates</span>{% endif %}
           </div>
         </div>
         <div class="staffing-state {% if event.staffing_gap %}needs-help{% endif %}">
           {% if event.staffing_gap %}
-            <strong>{{ event.staffing_gap }}</strong><span>still needed</span>
+            <strong>{{ event.staffing_gap }}</strong><span>positions open</span>
           {% else %}
             <strong>Ready</strong><span>staffed</span>
           {% endif %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_heading }} · NYS Fire{% endblock %}
+{% block page_title %}{{ page_heading }}{% endblock %}
+
+{% block content %}
+<form class="form-shell" method="post" data-recurring-form novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">{{ instructor.full_name }}</p><h2>Repeating weekly availability</h2></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid recurring-edit-grid">
+      {% for field in form %}
+        {% if field.name == 'weekdays' %}
+        <div class="field wide weekday-picker"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</div>
+        {% else %}
+        <label class="field {% if field.name == 'notes' %}wide{% endif %}" {% if field.name == 'start_time' or field.name == 'end_time' %}data-recurring-time-field{% endif %}><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  <div class="form-actions">
+    {% if rule %}<a class="button danger" href="{% url 'recurring_availability_delete' instructor.pk rule.pk %}">Remove schedule</a>{% endif %}
+    <a class="button secondary" href="{% url 'instructor_availability' instructor.pk %}">Cancel</a>
+    <button class="button primary" type="submit">Save weekly schedule</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}<script src="{% static 'js/availability-calendar.js' %}?v=7" defer></script>{% endblock %}

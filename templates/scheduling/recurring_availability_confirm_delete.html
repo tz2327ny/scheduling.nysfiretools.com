@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Remove weekly schedule · NYS Fire{% endblock %}
+{% block page_title %}Remove weekly schedule{% endblock %}
+
+{% block content %}
+<form class="form-shell narrow" method="post">
+  {% csrf_token %}
+  <section class="panel confirmation-panel">
+    <p class="eyebrow">Confirm removal</p>
+    <h2>{{ rule.weekday_summary }} · {% if rule.all_day %}All day{% else %}{{ rule.start_time|time:"g:i A" }}–{{ rule.end_time|time:"g:i A" }}{% endif %}</h2>
+    <p>This removes the repeating {{ rule.get_status_display|lower }} schedule for {{ instructor.full_name }}. One-time availability entries are unaffected.</p>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'recurring_availability_edit' instructor.pk rule.pk %}">Keep schedule</a><button class="button danger" type="submit">Remove weekly schedule</button></div>
+</form>
+{% endblock %}

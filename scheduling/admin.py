@@ -6,9 +6,11 @@ from .models import (
     AvailabilityBlock,
     Course,
     CourseAuthorization,
+    CourseUnit,
     Instructor,
     InstructorAssignment,
     Organization,
+    RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
 )
@@ -33,6 +35,18 @@ class CourseAdmin(admin.ModelAdmin):
     )
     list_filter = ("active", "instructor_intensive")
     search_fields = ("record_number", "name")
+
+
+@admin.register(CourseUnit)
+class CourseUnitAdmin(admin.ModelAdmin):
+    list_display = (
+        "course",
+        "unit_number",
+        "required_instructors",
+        "requires_safety_officer",
+        "active",
+    )
+    list_filter = ("course", "requires_safety_officer", "active")
 
 
 class CourseAuthorizationInline(admin.TabularInline):
@@ -87,6 +101,7 @@ class InstructorAssignmentAdmin(admin.ModelAdmin):
 
 
 admin.site.register(CourseAuthorization)
+admin.site.register(RecurringAvailabilityRule)
 admin.site.register(AvailabilityBlock)
 admin.site.register(AssistanceRequest)
 admin.site.register(AuditEvent)

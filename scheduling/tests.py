@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -11,14 +11,17 @@ from scheduling.models import (
     AvailabilityBlock,
     Course,
     CourseAuthorization,
+    CourseUnit,
     Instructor,
     InstructorAssignment,
     Organization,
+    RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
 )
 from scheduling.permissions import can_manage_organization
 from scheduling.services import eligible_instructors_for_session
+from scheduling.unit_staffing import sync_event_units
 
 
 class SchedulingTestCase(TestCase):
@@ -259,6 +262,43 @@ class EligibleInstructorTests(SchedulingTestCase):
 
         self.assertNotIn(instructor, eligible)
 
+    def test_recurring_work_schedule_excludes_instructor_during_that_time(self):
+        instructor = self.make_instructor("Recurring", self.jefferson)
+        RecurringAvailabilityRule.objects.create(
+            instructor=instructor,
+            status=AvailabilityBlock.Status.UNAVAILABLE,
+            weekdays="0,1,2,3,4",
+            start_time=time(8, 0),
+            end_time=time(17, 0),
+            starts_on=date(2026, 9, 1),
+            notes="Regular work schedule",
+        )
+
+        eligible = eligible_instructors_for_session(
+            self.session,
+            InstructorAssignment.Role.ASSISTANT,
+        )
+
+        self.assertNotIn(instructor, eligible)
+
+    def test_recurring_schedule_does_not_block_outside_its_hours(self):
+        instructor = self.make_instructor("Evening", self.jefferson)
+        RecurringAvailabilityRule.objects.create(
+            instructor=instructor,
+            status=AvailabilityBlock.Status.UNAVAILABLE,
+            weekdays="0,1,2,3,4",
+            start_time=time(17, 0),
+            end_time=time(21, 0),
+            starts_on=date(2026, 9, 1),
+        )
+
+        eligible = eligible_instructors_for_session(
+            self.session,
+            InstructorAssignment.Role.ASSISTANT,
+        )
+
+        self.assertIn(instructor, eligible)
+
 
 class CountyPermissionTests(SchedulingTestCase):
     def setUp(self):
@@ -436,7 +476,7 @@ class AvailabilityTests(SchedulingTestCase):
         self.assertEqual(response.status_code, 200)
 
     @override_settings(DEBUG=False)
-    def test_availability_page_renders_selectable_month_calendar(self):
+    def test_availability_page_renders_one_selectable_week(self):
         User = get_user_model()
         administrator = User.objects.create_superuser(
             username="calendar-admin@example.com",
@@ -448,13 +488,14 @@ class AvailabilityTests(SchedulingTestCase):
 
         response = self.client.get(
             reverse("instructor_availability", args=(instructor.pk,)),
-            {"month": "2026-09"},
+            {"week": "2026-09-10"},
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "September 2026")
-        self.assertContains(response, 'data-calendar-date="2026-09-14"')
-        self.assertContains(response, 'data-selectable-date="2026-09-14"')
+        self.assertContains(response, "Sep 7 – Sep 13, 2026")
+        self.assertContains(response, 'data-calendar-date="2026-09-10"')
+        self.assertContains(response, 'data-selectable-date="2026-09-10"')
+        self.assertNotContains(response, 'data-calendar-date="2026-09-14"')
         self.assertContains(response, "Select one or more dates on the calendar below")
         self.assertContains(response, "data-save-availability")
         self.assertNotContains(response, "data-availability-selection method=\"post\" hidden")
@@ -473,7 +514,7 @@ class AvailabilityTests(SchedulingTestCase):
         response = self.client.post(
             reverse("instructor_availability", args=(instructor.pk,)),
             {
-                "month": "2026-09",
+                "week": "2026-09-07",
                 "status": AvailabilityBlock.Status.AVAILABLE,
                 "all_day": "on",
                 "starts_at": "2026-09-14T00:00",
@@ -484,11 +525,118 @@ class AvailabilityTests(SchedulingTestCase):
 
         self.assertRedirects(
             response,
-            f'{reverse("instructor_availability", args=(instructor.pk,))}?month=2026-09',
+            f'{reverse("instructor_availability", args=(instructor.pk,))}?week=2026-09-07',
         )
         entry = instructor.availability_blocks.get()
         self.assertTrue(entry.all_day)
         self.assertEqual(entry.all_day_end_date.isoformat(), "2026-09-16")
+
+    @override_settings(DEBUG=False)
+    def test_instructor_can_create_recurring_weekday_work_schedule(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="recurring@example.com",
+            email="recurring@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Repeating", self.jefferson)
+        instructor.user = user
+        instructor.save(update_fields=("user",))
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("recurring_availability_create", args=(instructor.pk,)),
+            {
+                "return_week": "2026-09-07",
+                "status": AvailabilityBlock.Status.UNAVAILABLE,
+                "weekdays": ["0", "1", "2", "3", "4"],
+                "start_time": "08:00",
+                "end_time": "17:00",
+                "starts_on": "2026-09-01",
+                "ends_on": "",
+                "notes": "Regular work schedule",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f'{reverse("instructor_availability", args=(instructor.pk,))}?week=2026-09-07',
+        )
+        rule = instructor.recurring_availability_rules.get()
+        self.assertEqual(rule.weekdays, "0,1,2,3,4")
+        self.assertEqual(rule.weekday_summary, "Monday–Friday")
+        self.assertEqual(rule.start_time, time(8, 0))
+        self.assertIsNone(rule.ends_on)
+        weekly_page = self.client.get(
+            reverse("instructor_availability", args=(instructor.pk,)),
+            {"week": "2026-09-07"},
+        )
+        self.assertContains(weekly_page, "Regular work schedule")
+        self.assertContains(weekly_page, "8:00 AM–5:00 PM", count=7)
+
+    @override_settings(DEBUG=False)
+    def test_all_day_weekly_schedule_does_not_require_times(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="weekend@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Weekend", self.jefferson)
+        instructor.user = user
+        instructor.save(update_fields=("user",))
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("recurring_availability_create", args=(instructor.pk,)),
+            {
+                "status": AvailabilityBlock.Status.AVAILABLE,
+                "weekdays": ["5", "6"],
+                "all_day": "on",
+                "starts_on": "2026-09-01",
+                "ends_on": "",
+                "notes": "Preferred weekends",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("instructor_availability", args=(instructor.pk,)),
+        )
+        rule = instructor.recurring_availability_rules.get()
+        self.assertTrue(rule.all_day)
+        self.assertEqual(rule.weekday_summary, "Saturday–Sunday")
+        self.assertIsNone(rule.start_time)
+        self.assertIsNone(rule.end_time)
+
+    @override_settings(DEBUG=False)
+    def test_instructor_cannot_edit_another_instructors_weekly_schedule(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="rule-owner@example.com",
+            password="test-password",
+        )
+        own_instructor = self.make_instructor("Owner", self.jefferson)
+        own_instructor.user = user
+        own_instructor.save(update_fields=("user",))
+        other_instructor = self.make_instructor("Other Rule", self.lewis)
+        rule = RecurringAvailabilityRule.objects.create(
+            instructor=other_instructor,
+            status=AvailabilityBlock.Status.UNAVAILABLE,
+            weekdays="0,1,2,3,4",
+            start_time=time(8),
+            end_time=time(17),
+            starts_on=date(2026, 9, 1),
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "recurring_availability_edit",
+                args=(other_instructor.pk, rule.pk),
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     @override_settings(DEBUG=False)
     def test_calendar_range_prefills_availability_form(self):
@@ -523,6 +671,15 @@ class CourseManagementTests(TestCase):
         self.assertEqual(course.number_of_units, "25")
         self.assertIn("2nd - Units", course.instructor_requirements)
         self.assertEqual(course.matrix_source, "OFPC Course Matrix 5/7/2025")
+        self.assertEqual(course.units.count(), 25)
+        self.assertEqual(course.units.get(unit_number=1).required_instructors, 2)
+        self.assertEqual(course.units.get(unit_number=2).required_instructors, 1)
+        self.assertEqual(course.units.get(unit_number=3).required_instructors, 3)
+        self.assertEqual(course.units.get(unit_number=14).required_instructors, 4)
+        self.assertEqual(
+            sum(course.units.values_list("required_instructors", flat=True)),
+            49,
+        )
 
         course.name = "Locally adjusted title"
         course.save()
@@ -549,8 +706,35 @@ class CourseManagementTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("course_list"))
-        self.assertTrue(Course.objects.filter(record_number="99-99-9999").exists())
+        course = Course.objects.get(record_number="99-99-9999")
+        self.assertRedirects(response, reverse("course_edit", args=(course.pk,)))
+
+    @override_settings(DEBUG=True)
+    def test_befo_event_has_one_scheduling_row_per_unit_and_matrix_staffing(self):
+        course = Course.objects.get(record_number="01-05-0101")
+        jefferson = Organization.objects.get(name="Jefferson County")
+        event = TrainingEvent.objects.create(
+            course=course,
+            host_organization=jefferson,
+            status=TrainingEvent.Status.PROPOSED,
+            location_name="Watertown",
+        )
+
+        self.assertEqual(sync_event_units(event), 25)
+        self.assertEqual(event.sessions.count(), 25)
+        self.assertEqual(
+            event.sessions.get(course_unit__unit_number=14).course_unit.required_instructors,
+            4,
+        )
+
+        response = self.client.get(reverse("training_detail", args=(event.pk,)))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_required"], 49)
+        self.assertEqual(response.context["total_open"], 49)
+        self.assertEqual(response.context["unscheduled_units"], 25)
+        self.assertContains(response, "Unit 14")
+        self.assertContains(response, "4 instructors required")
 
     @override_settings(DEBUG=False)
     def test_non_system_administrator_cannot_create_course(self):

@@ -17,6 +17,30 @@
       {% endfor %}
     </div>
   </section>
+  {% if unit_formset %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Editable matrix</p><h2>Unit staffing requirements</h2><p>These values were prepopulated from the State course matrix. Adjust an individual unit here when the matrix changes.</p></div></div>
+    {{ unit_formset.management_form }}
+    <div class="unit-table-wrap">
+      <table class="unit-table">
+        <thead><tr><th>Unit</th><th>Title / description</th><th>Instructors required</th><th>Safety officer</th><th>Notes</th><th>Active</th></tr></thead>
+        <tbody>
+          {% for unit_form in unit_formset %}
+          <tr>
+            {% for hidden in unit_form.hidden_fields %}{{ hidden }}{% endfor %}
+            <td>{{ unit_form.unit_number }}{{ unit_form.unit_number.errors }}</td>
+            <td>{{ unit_form.title }}{{ unit_form.title.errors }}</td>
+            <td>{{ unit_form.required_instructors }}{{ unit_form.required_instructors.errors }}</td>
+            <td>{{ unit_form.requires_safety_officer }}{{ unit_form.requires_safety_officer.errors }}</td>
+            <td>{{ unit_form.notes }}{{ unit_form.notes.errors }}</td>
+            <td>{{ unit_form.active }}{{ unit_form.active.errors }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
   <div class="form-actions"><a class="button secondary" href="{% url 'course_list' %}">Cancel</a><button class="button primary" type="submit">Save course</button></div>
 </form>
 {% endblock %}
