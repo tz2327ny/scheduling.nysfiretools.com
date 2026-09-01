@@ -73,15 +73,15 @@ def seed_course_units(apps, schema_editor):
         if not count:
             continue
         staffing = staffing_by_unit(count, course.instructor_requirements, course.safety_officer_requirements)
-        CourseUnit.objects.bulk_create([
-            CourseUnit(
+        for number, values in staffing.items():
+            CourseUnit.objects.get_or_create(
                 course=course,
                 unit_number=number,
-                required_instructors=values[0],
-                requires_safety_officer=values[1],
+                defaults={
+                    "required_instructors": values[0],
+                    "requires_safety_officer": values[1],
+                },
             )
-            for number, values in staffing.items()
-        ])
         units = list(CourseUnit.objects.filter(course=course).order_by("unit_number"))
         for event in TrainingEvent.objects.filter(course=course):
             sessions = list(TrainingSession.objects.filter(event=event).order_by("starts_at", "pk"))
@@ -102,6 +102,10 @@ def unseed_course_units(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
+    # PostgreSQL cannot create the later partial index in the same transaction
+    # after the data migration updates TrainingSession foreign keys.
+    atomic = False
 
     dependencies = [
         ('scheduling', '0009_recurring_availability_rule'),
