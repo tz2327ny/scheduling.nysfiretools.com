@@ -1,14 +1,50 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ instructor.full_name }} Availability · NYS Fire{% endblock %}
 {% block page_title %}{{ instructor.full_name }} availability{% endblock %}
 
 {% block content %}
 <section class="page-actions">
-  <p>{{ instructor.home_organization.name }} · Future availability and scheduling constraints.</p>
-  {% if can_manage %}<a class="button primary" href="{% url 'availability_create' instructor.pk %}">＋ Add availability</a>{% endif %}
+  <p>{{ instructor.home_organization.name }} · Select one day or a date range on the calendar.</p>
+  {% if can_manage %}<a class="button secondary" href="{% url 'availability_create' instructor.pk %}">Add without selecting dates</a>{% endif %}
 </section>
 
+<section class="panel availability-calendar" data-availability-calendar>
+  <div class="calendar-toolbar">
+    <a class="calendar-nav" href="?month={{ previous_month|date:'Y-m' }}" aria-label="Previous month">←</a>
+    <div><p class="eyebrow">Availability calendar</p><h2>{{ month_start|date:"F Y" }}</h2></div>
+    <a class="calendar-nav" href="?month={{ next_month|date:'Y-m' }}" aria-label="Next month">→</a>
+  </div>
+  {% if can_manage %}
+  <div class="calendar-instructions">Click a day to select it. Click a second day to extend the selection into a range.</div>
+  <div class="calendar-selection" data-availability-selection hidden>
+    <strong data-selection-label></strong>
+    <span><button class="text-button" type="button" data-clear-selection>Clear</button><a class="button primary" data-add-link data-base-url="{% url 'availability_create' instructor.pk %}" href="{% url 'availability_create' instructor.pk %}">Fill availability</a></span>
+  </div>
+  {% endif %}
+  <div class="calendar-scroll">
+    <div class="calendar-weekdays" aria-hidden="true">
+      <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+    </div>
+    <div class="calendar-grid">
+      {% for week in calendar_weeks %}
+        {% for day in week %}
+        <div class="availability-day {% if not day.in_month %}outside-month{% endif %} {% if day.is_today %}today{% endif %}" data-calendar-cell="{{ day.date|date:'Y-m-d' }}">
+          <button class="calendar-day-select" type="button" data-calendar-date="{{ day.date|date:'Y-m-d' }}" {% if not can_manage or not day.in_month %}disabled{% endif %}><span>{{ day.date.day }}</span></button>
+          <div class="calendar-entries">
+            {% for entry in day.entries %}
+              {% if can_manage %}<a class="calendar-entry {{ entry.status }}" href="{% url 'availability_edit' instructor.pk entry.pk %}">{{ entry.get_status_display }}</a>{% else %}<span class="calendar-entry {{ entry.status }}">{{ entry.get_status_display }}</span>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="section-heading"><div><p class="eyebrow">Details</p><h2>Upcoming entries</h2></div></div>
 <section class="panel table-panel">
   <div class="data-table availability-table" role="table" aria-label="Instructor availability">
     <div class="data-row data-head" role="row">
@@ -26,3 +62,5 @@
   </div>
 </section>
 {% endblock %}
+
+{% block extra_scripts %}<script src="{% static 'js/availability-calendar.js' %}" defer></script>{% endblock %}

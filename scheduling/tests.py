@@ -368,6 +368,47 @@ class AvailabilityTests(SchedulingTestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    @override_settings(DEBUG=False)
+    def test_availability_page_renders_selectable_month_calendar(self):
+        User = get_user_model()
+        administrator = User.objects.create_superuser(
+            username="calendar-admin@example.com",
+            email="calendar-admin@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Calendar", self.jefferson)
+        self.client.force_login(administrator)
+
+        response = self.client.get(
+            reverse("instructor_availability", args=(instructor.pk,)),
+            {"month": "2026-09"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "September 2026")
+        self.assertContains(response, 'data-calendar-date="2026-09-14"')
+
+    @override_settings(DEBUG=False)
+    def test_calendar_range_prefills_availability_form(self):
+        User = get_user_model()
+        administrator = User.objects.create_superuser(
+            username="range-admin@example.com",
+            email="range-admin@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Range", self.jefferson)
+        self.client.force_login(administrator)
+
+        response = self.client.get(
+            reverse("availability_create", args=(instructor.pk,)),
+            {"start": "2026-09-14", "end": "2026-09-16"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(timezone.localtime(form.instance.starts_at).date().isoformat(), "2026-09-14")
+        self.assertEqual(timezone.localtime(form.instance.ends_at).date().isoformat(), "2026-09-16")
+
 
 class CourseManagementTests(TestCase):
     @override_settings(DEBUG=False)

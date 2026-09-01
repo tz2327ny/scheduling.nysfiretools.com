@@ -1,3 +1,6 @@
+import calendar
+from datetime import date, datetime, time, timedelta
+
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Min, Q
@@ -334,6 +337,53 @@ def instructor_availability(request, pk):
         Instructor.objects.select_related("home_organization"),
         pk=pk,
     )
+    try:
+        month_start = datetime.strptime(request.GET.get("month", ""), "%Y-%m").date()
+    except ValueError:
+        month_start = timezone.localdate().replace(day=1)
+    month_start = month_start.replace(day=1)
+    next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    previous_month = (month_start - timedelta(days=1)).replace(day=1)
+    current_timezone = timezone.get_current_timezone()
+    month_start_at = timezone.make_aware(
+        datetime.combine(month_start, time.min),
+        current_timezone,
+    )
+    next_month_at = timezone.make_aware(
+        datetime.combine(next_month, time.min),
+        current_timezone,
+    )
+    month_entries = list(
+        instructor.availability_blocks.filter(
+            starts_at__lt=next_month_at,
+            ends_at__gt=month_start_at,
+        )
+    )
+    calendar_weeks = []
+    for week in calendar.Calendar(firstweekday=6).monthdatescalendar(
+        month_start.year,
+        month_start.month,
+    ):
+        calendar_week = []
+        for calendar_date in week:
+            day_start = timezone.make_aware(
+                datetime.combine(calendar_date, time.min),
+                current_timezone,
+            )
+            day_end = day_start + timedelta(days=1)
+            calendar_week.append(
+                {
+                    "date": calendar_date,
+                    "in_month": calendar_date.month == month_start.month,
+                    "is_today": calendar_date == timezone.localdate(),
+                    "entries": [
+                        entry
+                        for entry in month_entries
+                        if entry.starts_at < day_end and entry.ends_at > day_start
+                    ],
+                }
+            )
+        calendar_weeks.append(calendar_week)
     entries = instructor.availability_blocks.filter(ends_at__gte=timezone.now())
     return render(
         request,
@@ -341,6 +391,10 @@ def instructor_availability(request, pk):
         {
             "instructor": instructor,
             "entries": entries,
+            "calendar_weeks": calendar_weeks,
+            "month_start": month_start,
+            "previous_month": previous_month,
+            "next_month": next_month,
             "can_manage": can_manage_instructor_availability(request.user, instructor),
         },
     )
@@ -351,6 +405,25 @@ def availability_create(request, pk):
     instructor = get_object_or_404(Instructor, pk=pk)
     require_instructor_availability_manager(request.user, instructor)
     entry = AvailabilityBlock(instructor=instructor)
+    selected_start = request.GET.get("start") or request.GET.get("date")
+    selected_end = request.GET.get("end") or selected_start
+    if selected_start:
+        try:
+            start_date = date.fromisoformat(selected_start)
+            end_date = date.fromisoformat(selected_end)
+            if end_date < start_date:
+                start_date, end_date = end_date, start_date
+            current_timezone = timezone.get_current_timezone()
+            entry.starts_at = timezone.make_aware(
+                datetime.combine(start_date, time(hour=8)),
+                current_timezone,
+            )
+            entry.ends_at = timezone.make_aware(
+                datetime.combine(end_date, time(hour=17)),
+                current_timezone,
+            )
+        except (TypeError, ValueError):
+            pass
     if request.method == "POST":
         form = AvailabilityBlockForm(request.POST, instance=entry)
         if form.is_valid():
