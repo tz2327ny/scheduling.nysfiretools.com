@@ -3,9 +3,11 @@ from datetime import date, datetime, time, timedelta
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db.models import Count, Min, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 
 from .forms import (
@@ -57,7 +59,7 @@ def dashboard(request):
     )
     for event in upcoming:
         event.staffing_gap = max(
-            event.course.recommended_instructors - event.instructor_count,
+            1 - event.instructor_count,
             0,
         )
 
@@ -126,10 +128,25 @@ def course_list(request):
             distinct=True,
         ),
     )
+    query = request.GET.get("q", "").strip()
+    if query:
+        courses = courses.filter(
+            Q(record_number__icontains=query)
+            | Q(name__icontains=query)
+            | Q(instructor_requirements__icontains=query)
+        )
+    courses = courses.order_by("name")
+    page_obj = Paginator(courses, 30).get_page(request.GET.get("page"))
     return render(
         request,
         "scheduling/course_list.html",
-        {"courses": courses, "can_manage_courses": course_manager},
+        {
+            "courses": page_obj,
+            "page_obj": page_obj,
+            "course_count": page_obj.paginator.count,
+            "query": query,
+            "can_manage_courses": course_manager,
+        },
     )
 
 
@@ -337,8 +354,29 @@ def instructor_availability(request, pk):
         Instructor.objects.select_related("home_organization"),
         pk=pk,
     )
+    can_manage = can_manage_instructor_availability(request.user, instructor)
+    quick_entry = AvailabilityBlock(instructor=instructor)
+    quick_form = AvailabilityBlockForm(
+        request.POST if request.method == "POST" else None,
+        instance=quick_entry,
+        initial={
+            "status": AvailabilityBlock.Status.AVAILABLE,
+            "all_day": True,
+        },
+    )
+    if request.method == "POST":
+        require_instructor_availability_manager(request.user, instructor)
+        if quick_form.is_valid():
+            quick_form.save()
+            messages.success(request, "Availability was added.")
+            month_value = request.POST.get("month", "")
+            availability_url = reverse("instructor_availability", args=(instructor.pk,))
+            if month_value:
+                availability_url = f"{availability_url}?month={month_value}"
+            return redirect(availability_url)
+    requested_month = request.POST.get("month", "") or request.GET.get("month", "")
     try:
-        month_start = datetime.strptime(request.GET.get("month", ""), "%Y-%m").date()
+        month_start = datetime.strptime(requested_month, "%Y-%m").date()
     except ValueError:
         month_start = timezone.localdate().replace(day=1)
     month_start = month_start.replace(day=1)
@@ -395,7 +433,8 @@ def instructor_availability(request, pk):
             "month_start": month_start,
             "previous_month": previous_month,
             "next_month": next_month,
-            "can_manage": can_manage_instructor_availability(request.user, instructor),
+            "can_manage": can_manage,
+            "quick_form": quick_form,
         },
     )
 

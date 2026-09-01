@@ -1,3 +1,5 @@
+from datetime import datetime, time, timedelta
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -26,6 +28,26 @@ class Course(models.Model):
     record_number = models.CharField("Course record number", max_length=30, unique=True)
     name = models.CharField(max_length=180)
     description = models.TextField(blank=True)
+    number_of_units = models.CharField("Number of units", max_length=30, blank=True)
+    student_contact_hours = models.CharField(max_length=30, blank=True)
+    instructor_requirements = models.TextField(
+        blank=True,
+        help_text="Primary and additional instructor requirements by unit.",
+    )
+    safety_officer_requirements = models.TextField(blank=True)
+    ems_requirements = models.TextField("EMS requirements", blank=True)
+    admin_time = models.TextField(blank=True)
+    county_hours_or_program_charge = models.TextField(blank=True)
+    completion_type = models.CharField(max_length=40, blank=True)
+    instructional_method = models.TextField(blank=True)
+    class_size = models.CharField(max_length=40, blank=True)
+    prerequisites = models.TextField(blank=True)
+    in_service_hours = models.CharField("In-service hours / CEU credit", max_length=60, blank=True)
+    national_certification = models.CharField(max_length=60, blank=True)
+    course_version = models.CharField(max_length=40, blank=True)
+    template_start_date = models.CharField(max_length=40, blank=True)
+    template_end_date = models.CharField(max_length=40, blank=True)
+    matrix_source = models.CharField(max_length=120, blank=True)
     minimum_instructors = models.PositiveSmallIntegerField(default=1)
     recommended_instructors = models.PositiveSmallIntegerField(default=1)
     instructor_intensive = models.BooleanField(default=False)
@@ -308,6 +330,7 @@ class AvailabilityBlock(models.Model):
     )
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
+    all_day = models.BooleanField(default=False)
     status = models.CharField(max_length=16, choices=Status.choices)
     notes = models.CharField(max_length=250, blank=True)
 
@@ -316,6 +339,21 @@ class AvailabilityBlock(models.Model):
 
     def clean(self):
         super().clean()
+        if self.all_day and self.starts_at and self.ends_at:
+            current_timezone = timezone.get_current_timezone()
+            start_date = timezone.localtime(self.starts_at).date()
+            local_end = timezone.localtime(self.ends_at)
+            end_date = local_end.date()
+            if local_end.time() != time.min or end_date <= start_date:
+                end_date += timedelta(days=1)
+            self.starts_at = timezone.make_aware(
+                datetime.combine(start_date, time.min),
+                current_timezone,
+            )
+            self.ends_at = timezone.make_aware(
+                datetime.combine(end_date, time.min),
+                current_timezone,
+            )
         if self.ends_at <= self.starts_at:
             raise ValidationError({"ends_at": "Availability must end after it starts."})
         if not self.instructor_id:
@@ -336,6 +374,10 @@ class AvailabilityBlock(models.Model):
 
     def __str__(self):
         return f"{self.instructor} — {self.get_status_display()}"
+
+    @property
+    def all_day_end_date(self):
+        return timezone.localtime(self.ends_at - timedelta(microseconds=1)).date()
 
 
 class AssistanceRequest(models.Model):

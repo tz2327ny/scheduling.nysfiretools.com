@@ -26,8 +26,8 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = (
         "record_number",
         "name",
-        "minimum_instructors",
-        "recommended_instructors",
+        "number_of_units",
+        "student_contact_hours",
         "instructor_intensive",
         "active",
     )

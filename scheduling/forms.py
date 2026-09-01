@@ -11,7 +11,7 @@ class DateTimeInput(forms.DateTimeInput):
 class AvailabilityBlockForm(forms.ModelForm):
     class Meta:
         model = AvailabilityBlock
-        fields = ("status", "starts_at", "ends_at", "notes")
+        fields = ("status", "all_day", "starts_at", "ends_at", "notes")
         widgets = {
             "starts_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
             "ends_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
@@ -21,7 +21,10 @@ class AvailabilityBlockForm(forms.ModelForm):
                 }
             ),
         }
-        labels = {"status": "Availability status"}
+        labels = {
+            "status": "Availability status",
+            "all_day": "All day",
+        }
 
 
 class CourseForm(forms.ModelForm):
@@ -31,13 +34,34 @@ class CourseForm(forms.ModelForm):
             "record_number",
             "name",
             "description",
-            "minimum_instructors",
-            "recommended_instructors",
+            "number_of_units",
+            "student_contact_hours",
+            "instructor_requirements",
+            "safety_officer_requirements",
+            "ems_requirements",
+            "admin_time",
+            "county_hours_or_program_charge",
+            "completion_type",
+            "instructional_method",
+            "class_size",
+            "prerequisites",
+            "in_service_hours",
+            "national_certification",
+            "course_version",
+            "template_start_date",
+            "template_end_date",
             "instructor_intensive",
             "active",
         )
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
+            "instructor_requirements": forms.Textarea(attrs={"rows": 4}),
+            "safety_officer_requirements": forms.Textarea(attrs={"rows": 3}),
+            "ems_requirements": forms.Textarea(attrs={"rows": 3}),
+            "admin_time": forms.Textarea(attrs={"rows": 2}),
+            "county_hours_or_program_charge": forms.Textarea(attrs={"rows": 2}),
+            "instructional_method": forms.Textarea(attrs={"rows": 3}),
+            "prerequisites": forms.Textarea(attrs={"rows": 3}),
         }
 
 

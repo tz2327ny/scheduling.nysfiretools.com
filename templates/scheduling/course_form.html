@@ -11,7 +11,7 @@
     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
     <div class="form-grid">
       {% for field in form %}
-      <label class="field {% if field.name == 'description' %}wide{% endif %}">
+      <label class="field {% if field.name == 'description' or field.name == 'instructor_requirements' or field.name == 'safety_officer_requirements' or field.name == 'ems_requirements' or field.name == 'admin_time' or field.name == 'county_hours_or_program_charge' or field.name == 'instructional_method' or field.name == 'prerequisites' %}wide{% endif %}">
         <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
       </label>
       {% endfor %}

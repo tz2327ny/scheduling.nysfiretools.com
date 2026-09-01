@@ -37,16 +37,20 @@
   </div>
   <aside class="panel detail-aside">
     <p class="eyebrow">Course staffing</p>
-    <h2>{{ event.course.recommended_instructors }} recommended</h2>
+    <h2>1 primary instructor</h2>
     <dl class="detail-list">
-      <div><dt>Minimum instructors</dt><dd>{{ event.course.minimum_instructors }}</dd></div>
-      <div><dt>Recommended instructors</dt><dd>{{ event.course.recommended_instructors }}</dd></div>
+      <div><dt>Additional instructors</dt><dd>{% if event.course.instructor_intensive %}Varies by course unit{% else %}See course matrix{% endif %}</dd></div>
+      <div><dt>Course units</dt><dd>{{ event.course.number_of_units|default:"Not listed" }}</dd></div>
+      <div><dt>Student contact hours</dt><dd>{{ event.course.student_contact_hours|default:"Not listed" }}</dd></div>
       <div><dt>Course record number</dt><dd>{{ event.course.record_number }}</dd></div>
       <div><dt>Course offering number</dt><dd>{{ event.offering_number|default:"Not assigned" }}</dd></div>
       <div><dt>Host</dt><dd>{{ event.host_organization.short_name }}</dd></div>
       <div><dt>Location</dt><dd>{{ event.location_name }}</dd></div>
       {% if event.contact_name %}<div><dt>Course contact</dt><dd>{{ event.contact_name }}</dd></div>{% endif %}
     </dl>
+    {% if event.course.instructor_requirements %}<div class="matrix-note"><strong>Instructor matrix</strong><p>{{ event.course.instructor_requirements|linebreaksbr }}</p></div>{% endif %}
+    {% if event.course.safety_officer_requirements %}<div class="matrix-note"><strong>Safety officer</strong><p>{{ event.course.safety_officer_requirements|linebreaksbr }}</p></div>{% endif %}
+    {% if event.course.ems_requirements %}<div class="matrix-note"><strong>EMS</strong><p>{{ event.course.ems_requirements|linebreaksbr }}</p></div>{% endif %}
     <div class="notice-card"><span class="notice-icon">i</span><p><strong>Regional heads-up</strong>Other courses on nearby dates are informational. Only instructor double-booking is a hard conflict.</p></div>
   </aside>
 </section>

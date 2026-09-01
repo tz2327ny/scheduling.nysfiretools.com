@@ -350,6 +350,20 @@ class AvailabilityTests(SchedulingTestCase):
                 ends_at=self.session.ends_at + timedelta(hours=1),
             )
 
+    def test_all_day_entry_covers_each_selected_day(self):
+        instructor = self.make_instructor("All Day", self.jefferson)
+        entry = AvailabilityBlock.objects.create(
+            instructor=instructor,
+            status=AvailabilityBlock.Status.AVAILABLE,
+            all_day=True,
+            starts_at=timezone.make_aware(datetime(2026, 9, 14, 8, 0)),
+            ends_at=timezone.make_aware(datetime(2026, 9, 16, 17, 0)),
+        )
+
+        self.assertEqual(timezone.localtime(entry.starts_at).isoformat(), "2026-09-14T00:00:00-04:00")
+        self.assertEqual(timezone.localtime(entry.ends_at).isoformat(), "2026-09-17T00:00:00-04:00")
+        self.assertEqual(entry.all_day_end_date.isoformat(), "2026-09-16")
+
     @override_settings(DEBUG=False)
     def test_linked_instructor_can_manage_own_availability(self):
         User = get_user_model()
@@ -387,6 +401,38 @@ class AvailabilityTests(SchedulingTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "September 2026")
         self.assertContains(response, 'data-calendar-date="2026-09-14"')
+        self.assertContains(response, 'data-selectable-date="2026-09-14"')
+
+    @override_settings(DEBUG=False)
+    def test_calendar_quick_form_creates_all_day_availability(self):
+        User = get_user_model()
+        administrator = User.objects.create_superuser(
+            username="quick-admin@example.com",
+            email="quick-admin@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Quick", self.jefferson)
+        self.client.force_login(administrator)
+
+        response = self.client.post(
+            reverse("instructor_availability", args=(instructor.pk,)),
+            {
+                "month": "2026-09",
+                "status": AvailabilityBlock.Status.AVAILABLE,
+                "all_day": "on",
+                "starts_at": "2026-09-14T00:00",
+                "ends_at": "2026-09-17T00:00",
+                "notes": "Preferred three-day window",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f'{reverse("instructor_availability", args=(instructor.pk,))}?month=2026-09',
+        )
+        entry = instructor.availability_blocks.get()
+        self.assertTrue(entry.all_day)
+        self.assertEqual(entry.all_day_end_date.isoformat(), "2026-09-16")
 
     @override_settings(DEBUG=False)
     def test_calendar_range_prefills_availability_form(self):
@@ -411,6 +457,21 @@ class AvailabilityTests(SchedulingTestCase):
 
 
 class CourseManagementTests(TestCase):
+    def test_state_course_matrix_is_prepopulated_and_editable(self):
+        course = Course.objects.get(record_number="01-05-0101")
+
+        self.assertEqual(
+            course.name,
+            "2021 BASIC EXTERIOR FIREFIGHTING OPERATIONS W/ HAZARDOUS MATERIALS FIRST RESPONDER OPERATIONS (BEFO W/ HMFRO)",
+        )
+        self.assertEqual(course.number_of_units, "25")
+        self.assertIn("2nd - Units", course.instructor_requirements)
+        self.assertEqual(course.matrix_source, "OFPC Course Matrix 5/7/2025")
+
+        course.name = "Locally adjusted title"
+        course.save()
+        self.assertEqual(Course.objects.get(pk=course.pk).name, "Locally adjusted title")
+
     @override_settings(DEBUG=False)
     def test_system_administrator_can_create_course(self):
         User = get_user_model()
@@ -424,18 +485,16 @@ class CourseManagementTests(TestCase):
         response = self.client.post(
             reverse("course_create"),
             {
-                "record_number": "01-05-0099",
+                "record_number": "99-99-9999",
                 "name": "Test Course",
                 "description": "Used to verify course management.",
-                "minimum_instructors": 1,
-                "recommended_instructors": 2,
                 "instructor_intensive": "on",
                 "active": "on",
             },
         )
 
         self.assertRedirects(response, reverse("course_list"))
-        self.assertTrue(Course.objects.filter(record_number="01-05-0099").exists())
+        self.assertTrue(Course.objects.filter(record_number="99-99-9999").exists())
 
     @override_settings(DEBUG=False)
     def test_non_system_administrator_cannot_create_course(self):

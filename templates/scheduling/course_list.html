@@ -5,9 +5,15 @@
 
 {% block content %}
 <section class="page-actions">
-  <p>Instructor staffing requirements and course-specific authorization coverage.</p>
+  <p>Editable OFPC course records, unit staffing requirements, and instructor authorization coverage.</p>
   {% if can_manage_courses %}<a class="button primary" href="{% url 'course_create' %}"><span aria-hidden="true">＋</span> Add course</a>{% endif %}
 </section>
+
+<form class="library-search" method="get">
+  <label for="course-search">Search by course name, record number, or staffing requirement</label>
+  <div><input id="course-search" name="q" type="search" value="{{ query }}" placeholder="e.g., 01-05-0101 or Firefighter"><button class="button secondary" type="submit">Search</button>{% if query %}<a class="text-link" href="{% url 'course_list' %}">Clear</a>{% endif %}</div>
+  <small>{{ course_count }} course{{ course_count|pluralize }} found</small>
+</form>
 
 <section class="card-grid">
   {% for course in courses %}
@@ -17,15 +23,30 @@
       <span>{% if not course.active %}<span class="status inactive">Inactive</span>{% endif %}{% if course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</span>
     </div>
     <h2>{{ course.name }}</h2>
-    <p>{{ course.description|default:"Course authorization and staffing details." }}</p>
+    <p>{{ course.description|default:course.instructor_requirements|default:"Course authorization and staffing details."|truncatechars:180 }}</p>
     <dl class="course-metrics">
-      <div><dt>Minimum</dt><dd>{{ course.minimum_instructors }}</dd></div>
-      <div><dt>Recommended</dt><dd>{{ course.recommended_instructors }}</dd></div>
+      <div><dt>Units</dt><dd>{{ course.number_of_units|default:"—" }}</dd></div>
+      <div><dt>Contact hours</dt><dd>{{ course.student_contact_hours|default:"—" }}</dd></div>
       <div><dt>Authorized</dt><dd>{{ course.authorized_count }}</dd></div>
       <div><dt>Upcoming</dt><dd>{{ course.upcoming_count }}</dd></div>
     </dl>
+    {% if course.instructor_requirements or course.safety_officer_requirements or course.ems_requirements %}
+    <details class="course-requirements">
+      <summary>View staffing matrix</summary>
+      {% if course.instructor_requirements %}<div><strong>Instructors</strong><p>{{ course.instructor_requirements|linebreaksbr }}</p></div>{% endif %}
+      {% if course.safety_officer_requirements %}<div><strong>Safety officer</strong><p>{{ course.safety_officer_requirements|linebreaksbr }}</p></div>{% endif %}
+      {% if course.ems_requirements %}<div><strong>EMS</strong><p>{{ course.ems_requirements|linebreaksbr }}</p></div>{% endif %}
+    </details>
+    {% endif %}
     {% if can_manage_courses %}<a class="panel-link course-edit-link" href="{% url 'course_edit' course.pk %}">Edit course <span aria-hidden="true">→</span></a>{% endif %}
   </article>
   {% empty %}<div class="empty-state"><strong>No courses are in the library.</strong>{% if can_manage_courses %}<p>Add the first course to begin assigning instructor authorizations.</p><a class="button primary" href="{% url 'course_create' %}">Add first course</a>{% endif %}</div>{% endfor %}
 </section>
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Course library pages">
+  {% if page_obj.has_previous %}<a class="button secondary" href="?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a class="button secondary" href="?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}
