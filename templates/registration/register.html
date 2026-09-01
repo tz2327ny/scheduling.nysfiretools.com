@@ -1,0 +1,34 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Instructor registration · NYS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body class="login-page">
+  <main class="login-card registration-card">
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYS Fire</strong><span>Training Scheduler</span></div></div>
+    <div class="login-copy"><p class="eyebrow">Instructor access request</p><h1>Create an instructor account</h1><p>Your account will remain inactive until a State administrator reviews and approves it.</p></div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="registration-grid">
+        {% for field in form %}
+        {% if field.name == 'requested_courses' %}
+        <div class="field wide course-selector" data-course-selector>
+          <span>{{ field.label }}</span>
+          <input class="course-search" type="search" placeholder="Search by course name or record number" aria-label="Search course authorizations" data-course-search>
+          <div class="course-choice-list">{{ field }}</div>
+          {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+        </div>
+        {% else %}
+        <label class="field {% if field.name == 'travel_notes' or field.name == 'home_organization' %}wide{% endif %}">
+          <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+        </label>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <button class="button primary" type="submit">Submit for State approval</button>
+    </form>
+    <p class="login-alternate">Already approved? <a href="{% url 'login' %}">Sign in</a></p>
+  </main>
+  <script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>
+</body>
+</html>

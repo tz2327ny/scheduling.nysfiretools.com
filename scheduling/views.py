@@ -13,6 +13,7 @@ from django.utils import timezone
 from .forms import (
     AvailabilityBlockForm,
     CourseForm,
+    InstructorAuthorizationRequestForm,
     InstructorForm,
     TrainingEventForm,
     TrainingSessionFormSet,
@@ -20,6 +21,7 @@ from .forms import (
 from .models import (
     AvailabilityBlock,
     Course,
+    CourseAuthorization,
     Instructor,
     InstructorAssignment,
     Organization,
@@ -345,6 +347,38 @@ def instructor_edit(request, pk):
         request,
         "scheduling/instructor_form.html",
         {"form": form, "page_heading": f"Edit {instructor.full_name}"},
+    )
+
+
+@login_required_unless_debug
+def instructor_authorizations(request, pk):
+    instructor = get_object_or_404(
+        Instructor.objects.select_related("home_organization", "user"),
+        pk=pk,
+    )
+    if not request.user.is_authenticated or (
+        not request.user.is_superuser and instructor.user_id != request.user.id
+    ):
+        raise PermissionDenied("Only the instructor or a State administrator can view these authorizations.")
+    form = InstructorAuthorizationRequestForm(
+        request.POST or None,
+        instructor=instructor,
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Your course authorization selections were submitted for State approval.")
+        return redirect("instructor_authorizations", pk=instructor.pk)
+    authorizations = instructor.course_authorizations.select_related("course", "verified_by").order_by(
+        "course__name", "course__record_number"
+    )
+    return render(
+        request,
+        "scheduling/instructor_authorizations.html",
+        {
+            "instructor": instructor,
+            "form": form,
+            "authorizations": authorizations,
+        },
     )
 
 

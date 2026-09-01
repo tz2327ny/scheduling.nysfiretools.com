@@ -24,7 +24,11 @@
         <a class="nav-item" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
         <a class="nav-item" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Course library</a>
         <a class="nav-item" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
-        {% if user.is_authenticated and user.instructor_profile %}<a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>{% endif %}
+        {% if user.is_authenticated and user.instructor_profile %}
+        <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>
+        <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
+        {% endif %}
+        {% if user.is_superuser %}<a class="nav-item" href="{% url 'user_list' %}"><span aria-hidden="true">⚙</span> User management</a>{% endif %}
         <a class="nav-item" href="#requests"><span aria-hidden="true">↗</span> Assistance requests</a>
       </nav>
       <div class="sidebar-foot">
@@ -40,11 +44,18 @@
           <h1>{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
         <div class="topbar-actions">
-          <button class="icon-button" type="button" aria-label="Notifications">●</button>
+          {% if user.is_authenticated %}
           <div class="user-chip">
-            <span class="avatar">TA</span>
-            <span><strong>Training Admin</strong><small>State coordinator</small></span>
+            <span class="avatar">{{ user.first_name|first|default:"U" }}{{ user.last_name|first }}</span>
+            <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}State administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
           </div>
+          <div class="account-actions">
+            {% if user.is_superuser %}<a class="text-link" href="{% url 'user_list' %}">Users</a>{% endif %}
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button" type="submit">Sign out</button></form>
+          </div>
+          {% else %}
+          <a class="button secondary" href="{% url 'login' %}">Sign in</a>
+          {% endif %}
         </div>
       </header>
       {% if messages %}

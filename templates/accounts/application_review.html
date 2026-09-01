@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Review {{ application.user.get_full_name }} · NYS Fire{% endblock %}
+{% block page_title %}Review instructor application{% endblock %}
+
+{% block content %}
+<form class="form-shell" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">State approval</p><h2>{{ application.user.get_full_name|default:application.user.email }}</h2></div><span class="status tentative">Pending</span></div>
+    <dl class="review-summary">
+      <div><dt>Email</dt><dd>{{ application.user.email }}</dd></div>
+      <div><dt>Phone</dt><dd>{{ application.phone|default:"Not supplied" }}</dd></div>
+      <div><dt>Assignment</dt><dd>{{ application.home_organization.name }}</dd></div>
+      <div><dt>Travel</dt><dd>{{ application.get_travel_preference_display }}</dd></div>
+      <div class="wide"><dt>Travel notes</dt><dd>{{ application.travel_notes|default:"None" }}</dd></div>
+    </dl>
+    <div class="course-review field course-selector" data-course-selector>
+      <span>{{ form.approved_courses.label }}</span>
+      <p>These are the courses claimed by the applicant. Uncheck anything that cannot be verified.</p>
+      <input class="course-search" type="search" placeholder="Search claimed courses" aria-label="Search claimed courses" data-course-search>
+      <div class="course-choice-list">{{ form.approved_courses }}</div>
+      <small>{{ form.approved_courses.help_text }}</small>{% for error in form.approved_courses.errors %}<em>{{ error }}</em>{% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a><button class="button primary" type="submit">Approve account and checked courses</button></div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}<script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>{% endblock %}

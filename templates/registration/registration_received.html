@@ -1,0 +1,13 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Registration received · NYS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body class="login-page">
+  <main class="login-card confirmation-card">
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYS Fire</strong><span>Training Scheduler</span></div></div>
+    <div class="confirmation-icon">✓</div>
+    <div class="login-copy"><p class="eyebrow">Request received</p><h1>Pending State approval</h1><p>A State administrator must approve your instructor account before you can sign in. Your password has been saved securely.</p></div>
+    <a class="button secondary" href="{% url 'login' %}">Return to sign in</a>
+  </main>
+</body>
+</html>

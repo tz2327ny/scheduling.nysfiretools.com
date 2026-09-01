@@ -1,7 +1,14 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import AvailabilityBlock, Course, Instructor, TrainingEvent, TrainingSession
+from .models import (
+    AvailabilityBlock,
+    Course,
+    CourseAuthorization,
+    Instructor,
+    TrainingEvent,
+    TrainingSession,
+)
 
 
 class DateTimeInput(forms.DateTimeInput):
@@ -129,3 +136,44 @@ class InstructorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if managed_organizations is not None:
             self.fields["home_organization"].queryset = managed_organizations
+
+
+class InstructorAuthorizationRequestForm(forms.Form):
+    courses = forms.ModelMultipleChoiceField(
+        label="Additional course authorizations",
+        queryset=Course.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select courses you are currently authorized to teach. New selections require State approval.",
+    )
+
+    def __init__(self, *args, instructor, **kwargs):
+        self.instructor = instructor
+        super().__init__(*args, **kwargs)
+        pending_ids = instructor.course_authorizations.filter(
+            status=CourseAuthorization.Status.PENDING
+        ).values_list("course_id", flat=True)
+        locked_ids = instructor.course_authorizations.exclude(
+            status=CourseAuthorization.Status.PENDING
+        ).values_list("course_id", flat=True)
+        self.fields["courses"].queryset = Course.objects.filter(active=True).exclude(
+            pk__in=locked_ids
+        ).order_by("name", "record_number")
+        self.fields["courses"].initial = pending_ids
+
+    def save(self):
+        selected_courses = self.cleaned_data["courses"]
+        selected_ids = set(selected_courses.values_list("pk", flat=True))
+        self.instructor.course_authorizations.filter(
+            status=CourseAuthorization.Status.PENDING
+        ).exclude(course_id__in=selected_ids).delete()
+        for course in selected_courses:
+            CourseAuthorization.objects.update_or_create(
+                instructor=self.instructor,
+                course=course,
+                defaults={
+                    "status": CourseAuthorization.Status.PENDING,
+                    "verified_by": None,
+                    "verified_at": None,
+                },
+            )

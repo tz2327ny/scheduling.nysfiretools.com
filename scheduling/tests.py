@@ -66,6 +66,59 @@ class SchedulingTestCase(TestCase):
         return instructor
 
 
+class InstructorAuthorizationRequestTests(SchedulingTestCase):
+    @override_settings(DEBUG=False)
+    def test_linked_instructor_can_submit_course_claim_for_state_approval(self):
+        user = get_user_model().objects.create_user(
+            username="authorized.instructor@example.com",
+            email="authorized.instructor@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Authorized", self.jefferson)
+        instructor.user = user
+        instructor.save(update_fields=("user",))
+        requested_course = Course.objects.create(
+            record_number="99-99-9100",
+            name="Requested Authorization Course",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("instructor_authorizations", args=(instructor.pk,)),
+            {"courses": [requested_course.pk]},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("instructor_authorizations", args=(instructor.pk,)),
+        )
+        authorization = CourseAuthorization.objects.get(
+            instructor=instructor,
+            course=requested_course,
+        )
+        self.assertEqual(authorization.status, CourseAuthorization.Status.PENDING)
+        self.assertIsNone(authorization.verified_by)
+        self.assertIsNone(authorization.verified_at)
+
+    @override_settings(DEBUG=False)
+    def test_instructor_cannot_manage_another_instructors_authorizations(self):
+        user = get_user_model().objects.create_user(
+            username="first.instructor@example.com",
+            password="test-password",
+        )
+        own_profile = self.make_instructor("First", self.jefferson)
+        own_profile.user = user
+        own_profile.save(update_fields=("user",))
+        other_profile = self.make_instructor("Other", self.lewis)
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse("instructor_authorizations", args=(other_profile.pk,))
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+
 class InstructorConflictTests(SchedulingTestCase):
     def test_overlapping_assignment_is_rejected(self):
         instructor = self.make_instructor("Mara", self.jefferson)

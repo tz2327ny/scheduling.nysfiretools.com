@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage {{ managed_user.email|default:managed_user.username }} · NYS Fire{% endblock %}
+{% block page_title %}Manage user{% endblock %}
+
+{% block content %}
+<form class="form-shell narrow" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">User access</p><h2>{{ managed_user.get_full_name|default:managed_user.username }}</h2></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}
+      <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% endif %}">
+        <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a><button class="button primary" type="submit">Save user access</button></div>
+</form>
+{% endblock %}

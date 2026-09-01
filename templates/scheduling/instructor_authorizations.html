@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Course authorizations · NYS Fire{% endblock %}
+{% block page_title %}My course authorizations{% endblock %}
+
+{% block content %}
+<section class="page-actions"><p>Active authorizations are used to match you with courses. New claims remain pending until verified by a State administrator.</p></section>
+
+<section class="panel authorization-status-panel">
+  <div class="panel-header"><div><p class="eyebrow">Verified record</p><h2>Current and pending authorizations</h2></div></div>
+  <div class="authorization-status-list">
+    {% for authorization in authorizations %}
+    <div class="authorization-status-row"><span><strong>{{ authorization.course.record_number }}</strong><small>{{ authorization.course.name }}</small></span><i class="status {% if authorization.status == 'active' %}available{% elif authorization.status == 'pending' %}tentative{% else %}inactive{% endif %}">{{ authorization.get_status_display }}</i></div>
+    {% empty %}<div class="empty-state"><strong>No course authorizations are on file.</strong><p>Use the form below to submit your current authorizations.</p></div>{% endfor %}
+  </div>
+</section>
+
+<form class="form-shell" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Instructor-submitted</p><h2>Request additional authorizations</h2></div></div>
+    <div class="course-review field course-selector" data-course-selector>
+      <span>{{ form.courses.label }}</span>
+      <input class="course-search" type="search" placeholder="Search by course name or record number" aria-label="Search available courses" data-course-search>
+      <div class="course-choice-list">{{ form.courses }}</div>
+      <small>{{ form.courses.help_text }}</small>{% for error in form.courses.errors %}<em>{{ error }}</em>{% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><button class="button primary" type="submit">Submit selections for State approval</button></div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}<script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>{% endblock %}

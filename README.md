@@ -8,6 +8,9 @@ A standalone course and instructor coordination system for Jefferson, Lewis, St.
 - Course library with a persistent Course Record Number and instructor staffing requirements
 - County and Academy instructor directory
 - Course-specific instructor authorizations
+- Instructor self-registration with State Admin account approval
+- Instructor-submitted course authorization claims with State verification
+- Statewide user management and county/organization administrator assignments
 - Instructor travel preferences
 - Instructor-entered preferred, tentative, and unavailable time windows
 - Purposed, confirmed, completed, and cancelled training
