@@ -5,11 +5,12 @@ A standalone course and instructor coordination system for Jefferson, Lewis, St.
 ## Current product slice
 
 - Regional dashboard and schedule awareness
-- Course library with minimum and recommended instructor staffing
+- Course library with a persistent Course Record Number and instructor staffing requirements
 - County and Academy instructor directory
 - Course-specific instructor authorizations
 - Instructor travel preferences
-- Proposed, tentative, confirmed, completed, and canceled training
+- Purposed, confirmed, completed, and cancelled training
+- Unique Course Offering Numbers required before confirmation
 - Multi-session training dates
 - Hard instructor double-booking validation
 - Qualified-instructor matching

@@ -148,7 +148,7 @@ def course_edit(request, pk):
     return render(
         request,
         "scheduling/course_form.html",
-        {"form": form, "page_heading": f"Edit {course.code}"},
+        {"form": form, "page_heading": f"Edit {course.record_number}"},
     )
 
 

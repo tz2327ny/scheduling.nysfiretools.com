@@ -32,7 +32,7 @@
     </div>
     {% for event in events %}
     <a class="data-row" role="row" href="{% url 'training_detail' event.pk %}">
-      <span><strong>{{ event.course.name }}</strong><small>{{ event.course.code }}</small></span>
+      <span><strong>{{ event.course.name }}</strong><small>{{ event.course.record_number }}{% if event.offering_number %} · Offering {{ event.offering_number }}{% endif %}</small></span>
       <span>{{ event.host_organization.short_name }}</span>
       <span>{{ event.next_session|date:"M j, Y · g:i A"|default:"Not scheduled" }}</span>
       <span><i class="status {{ event.status }}">{{ event.get_status_display }}</i></span>

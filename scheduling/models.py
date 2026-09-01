@@ -23,7 +23,7 @@ class Organization(models.Model):
 
 
 class Course(models.Model):
-    code = models.CharField(max_length=30, unique=True)
+    record_number = models.CharField("Course record number", max_length=30, unique=True)
     name = models.CharField(max_length=180)
     description = models.TextField(blank=True)
     minimum_instructors = models.PositiveSmallIntegerField(default=1)
@@ -35,7 +35,7 @@ class Course(models.Model):
         ordering = ("name",)
 
     def __str__(self):
-        return f"{self.code} — {self.name}"
+        return f"{self.record_number} — {self.name}"
 
     def clean(self):
         if self.recommended_instructors < self.minimum_instructors:
@@ -139,7 +139,7 @@ class CourseAuthorization(models.Model):
         )
 
     def __str__(self):
-        return f"{self.instructor} — {self.course.code}"
+        return f"{self.instructor} — {self.course.record_number}"
 
 
 class TrainingEvent(models.Model):
@@ -156,6 +156,14 @@ class TrainingEvent(models.Model):
         related_name="training_events",
     )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PROPOSED)
+    offering_number = models.CharField(
+        "Course offering number",
+        max_length=30,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Optional while Purposed; required before the training can be Confirmed.",
+    )
     location_name = models.CharField(max_length=180)
     address = models.CharField(max_length=250, blank=True)
     contact_name = models.CharField(max_length=140, blank=True)
@@ -174,6 +182,39 @@ class TrainingEvent(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(status__in=("confirmed", "completed"))
+                    | (
+                        models.Q(offering_number__isnull=False)
+                        & ~models.Q(offering_number="")
+                    )
+                ),
+                name="confirmed_training_requires_offering_number",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        self.offering_number = (
+            self.offering_number.strip() if self.offering_number else None
+        )
+        if (
+            self.status in (self.Status.CONFIRMED, self.Status.COMPLETED)
+            and not self.offering_number
+        ):
+            raise ValidationError(
+                {
+                    "offering_number": (
+                        "Enter the Course Offering Number before confirming this training."
+                    )
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.course.name} — {self.host_organization.short_name}"
@@ -197,7 +238,7 @@ class TrainingSession(models.Model):
             raise ValidationError({"ends_at": "The session must end after it starts."})
 
     def __str__(self):
-        return f"{self.event.course.code} — {self.starts_at:%b %d, %Y %I:%M %p}"
+        return f"{self.event.course.record_number} — {self.starts_at:%b %d, %Y %I:%M %p}"
 
 
 class InstructorAssignment(models.Model):

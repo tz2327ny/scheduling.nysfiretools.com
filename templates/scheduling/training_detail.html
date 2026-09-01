@@ -6,7 +6,7 @@
 {% block content %}
 <section class="detail-hero">
   <div>
-    <div class="detail-badges"><span class="course-code">{{ event.course.code }}</span><span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div>
+    <div class="detail-badges"><span class="course-code">Record {{ event.course.record_number }}</span>{% if event.offering_number %}<span class="course-code">Offering {{ event.offering_number }}</span>{% endif %}<span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div>
     <p>{{ event.host_organization.name }} · {{ event.location_name }}</p>
   </div>
   <div class="toolbar-actions">
@@ -41,6 +41,8 @@
     <dl class="detail-list">
       <div><dt>Minimum instructors</dt><dd>{{ event.course.minimum_instructors }}</dd></div>
       <div><dt>Recommended instructors</dt><dd>{{ event.course.recommended_instructors }}</dd></div>
+      <div><dt>Course record number</dt><dd>{{ event.course.record_number }}</dd></div>
+      <div><dt>Course offering number</dt><dd>{{ event.offering_number|default:"Not assigned" }}</dd></div>
       <div><dt>Host</dt><dd>{{ event.host_organization.short_name }}</dd></div>
       <div><dt>Location</dt><dd>{{ event.location_name }}</dd></div>
       {% if event.contact_name %}<div><dt>Course contact</dt><dd>{{ event.contact_name }}</dd></div>{% endif %}

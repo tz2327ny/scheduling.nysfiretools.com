@@ -28,7 +28,7 @@ class SchedulingTestCase(TestCase):
             name="New York State Academy of Fire Science"
         )
         self.course = Course.objects.create(
-            code="01-05-0050",
+            record_number="01-05-0050",
             name="Firefighter Survival",
             minimum_instructors=4,
             recommended_instructors=6,
@@ -38,6 +38,7 @@ class SchedulingTestCase(TestCase):
             course=self.course,
             host_organization=self.jefferson,
             status=TrainingEvent.Status.CONFIRMED,
+            offering_number="01-01-03-048",
             location_name="Watertown",
         )
         self.starts_at = timezone.make_aware(datetime(2026, 9, 10, 8, 0))
@@ -225,6 +226,43 @@ class TrainingStatusTests(TestCase):
         )
 
 
+class CourseOfferingNumberTests(SchedulingTestCase):
+    def test_purposed_training_can_be_saved_without_offering_number(self):
+        event = TrainingEvent.objects.create(
+            course=self.course,
+            host_organization=self.lewis,
+            status=TrainingEvent.Status.PROPOSED,
+            location_name="Lowville",
+        )
+
+        self.assertIsNone(event.offering_number)
+
+    def test_training_cannot_be_confirmed_without_offering_number(self):
+        event = TrainingEvent(
+            course=self.course,
+            host_organization=self.lewis,
+            status=TrainingEvent.Status.CONFIRMED,
+            location_name="Lowville",
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Enter the Course Offering Number before confirming this training.",
+        ):
+            event.save()
+
+    def test_confirmed_training_accepts_unique_offering_number(self):
+        event = TrainingEvent.objects.create(
+            course=self.course,
+            host_organization=self.lewis,
+            status=TrainingEvent.Status.CONFIRMED,
+            offering_number="01-01-03-049",
+            location_name="Lowville",
+        )
+
+        self.assertEqual(event.offering_number, "01-01-03-049")
+
+
 class CourseManagementTests(TestCase):
     @override_settings(DEBUG=False)
     def test_system_administrator_can_create_course(self):
@@ -239,7 +277,7 @@ class CourseManagementTests(TestCase):
         response = self.client.post(
             reverse("course_create"),
             {
-                "code": "01-05-0099",
+                "record_number": "01-05-0099",
                 "name": "Test Course",
                 "description": "Used to verify course management.",
                 "minimum_instructors": 1,
@@ -250,7 +288,7 @@ class CourseManagementTests(TestCase):
         )
 
         self.assertRedirects(response, reverse("course_list"))
-        self.assertTrue(Course.objects.filter(code="01-05-0099").exists())
+        self.assertTrue(Course.objects.filter(record_number="01-05-0099").exists())
 
     @override_settings(DEBUG=False)
     def test_non_system_administrator_cannot_create_course(self):

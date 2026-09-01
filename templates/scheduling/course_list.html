@@ -13,7 +13,7 @@
   {% for course in courses %}
   <article class="course-card">
     <div class="course-card-head">
-      <span class="course-code">{{ course.code }}</span>
+      <span class="course-code">{{ course.record_number }}</span>
       <span>{% if not course.active %}<span class="status inactive">Inactive</span>{% endif %}{% if course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</span>
     </div>
     <h2>{{ course.name }}</h2>

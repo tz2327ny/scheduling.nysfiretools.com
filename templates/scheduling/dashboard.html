@@ -58,7 +58,7 @@
             <span class="status {{ event.status }}">{{ event.get_status_display }}</span>
             {% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}
           </div>
-          <p>{{ event.course.code }} · {{ event.host_organization.short_name }} · {{ event.location_name }}</p>
+          <p>{{ event.course.record_number }}{% if event.offering_number %} · Offering {{ event.offering_number }}{% endif %} · {{ event.host_organization.short_name }} · {{ event.location_name }}</p>
           <div class="training-meta">
             <span>{{ event.next_session|date:"D, M j · g:i A" }}</span>
             <span>{{ event.instructor_count }} instructor{{ event.instructor_count|pluralize }} assigned</span>

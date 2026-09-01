@@ -24,7 +24,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     list_display = (
-        "code",
+        "record_number",
         "name",
         "minimum_instructors",
         "recommended_instructors",
@@ -32,7 +32,7 @@ class CourseAdmin(admin.ModelAdmin):
         "active",
     )
     list_filter = ("active", "instructor_intensive")
-    search_fields = ("code", "name")
+    search_fields = ("record_number", "name")
 
 
 class CourseAuthorizationInline(admin.TabularInline):
@@ -55,9 +55,21 @@ class TrainingSessionInline(admin.StackedInline):
 
 @admin.register(TrainingEvent)
 class TrainingEventAdmin(admin.ModelAdmin):
-    list_display = ("course", "host_organization", "status", "location_name", "updated_at")
+    list_display = (
+        "course",
+        "offering_number",
+        "host_organization",
+        "status",
+        "location_name",
+        "updated_at",
+    )
     list_filter = ("status", "host_organization", "course")
-    search_fields = ("course__code", "course__name", "location_name")
+    search_fields = (
+        "course__record_number",
+        "course__name",
+        "offering_number",
+        "location_name",
+    )
     inlines = (TrainingSessionInline,)
 
 

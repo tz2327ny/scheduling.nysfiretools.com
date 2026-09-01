@@ -48,9 +48,9 @@ class Command(BaseCommand):
             ("01-06-0007", "Pump Operations", 2, 2, False),
         )
         courses = {}
-        for code, name, minimum, recommended, intensive in course_rows:
-            courses[code], _ = Course.objects.update_or_create(
-                code=code,
+        for record_number, name, minimum, recommended, intensive in course_rows:
+            courses[record_number], _ = Course.objects.update_or_create(
+                record_number=record_number,
                 defaults={
                     "name": name,
                     "minimum_instructors": minimum,
@@ -97,17 +97,42 @@ class Command(BaseCommand):
         TrainingEvent.objects.filter(notes="Demo schedule record").delete()
         today = timezone.localdate()
         event_rows = (
-            ("01-05-0050", "Jefferson", 5, TrainingEvent.Status.CONFIRMED, "Watertown Fire Training Center", 3),
-            ("01-05-0005", "Lewis", 7, TrainingEvent.Status.PROPOSED, "Lewis County Public Safety Building", 2),
-            ("01-05-0006", "Oswego", 8, TrainingEvent.Status.TENTATIVE, "Oswego County Training Grounds", 2),
-            ("01-06-0007", "St. Lawrence", 12, TrainingEvent.Status.CONFIRMED, "Canton Fire Training Center", 2),
-            ("01-05-0050", "Oswego", 18, TrainingEvent.Status.PROPOSED, "Mexico Fire Department", 1),
+            (
+                "01-05-0050", "01-01-03-048", "Jefferson", 5,
+                TrainingEvent.Status.CONFIRMED, "Watertown Fire Training Center", 3,
+            ),
+            (
+                "01-05-0005", None, "Lewis", 7,
+                TrainingEvent.Status.PROPOSED, "Lewis County Public Safety Building", 2,
+            ),
+            (
+                "01-05-0006", None, "Oswego", 8,
+                TrainingEvent.Status.PROPOSED, "Oswego County Training Grounds", 2,
+            ),
+            (
+                "01-06-0007", "01-01-03-049", "St. Lawrence", 12,
+                TrainingEvent.Status.CONFIRMED, "Canton Fire Training Center", 2,
+            ),
+            (
+                "01-05-0050", None, "Oswego", 18,
+                TrainingEvent.Status.PROPOSED, "Mexico Fire Department", 1,
+            ),
         )
-        for index, (code, host, offset, status, location, assignment_count) in enumerate(event_rows):
+        for index, row in enumerate(event_rows):
+            (
+                record_number,
+                offering_number,
+                host,
+                offset,
+                status,
+                location,
+                assignment_count,
+            ) = row
             event = TrainingEvent.objects.create(
-                course=courses[code],
+                course=courses[record_number],
                 host_organization=organizations[host],
                 status=status,
+                offering_number=offering_number,
                 location_name=location,
                 notes="Demo schedule record",
                 acadis_registration_url="https://www.dhses.ny.gov/academy-fire-science",

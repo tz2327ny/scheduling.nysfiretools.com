@@ -12,7 +12,7 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = (
-            "code",
+            "record_number",
             "name",
             "description",
             "minimum_instructors",
@@ -32,6 +32,7 @@ class TrainingEventForm(forms.ModelForm):
             "course",
             "host_organization",
             "status",
+            "offering_number",
             "location_name",
             "address",
             "contact_name",
