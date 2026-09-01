@@ -49,3 +49,15 @@ def can_manage_courses(user):
 def require_course_manager(user):
     if not can_manage_courses(user):
         raise PermissionDenied("Only a system administrator can manage the course library.")
+
+
+def can_manage_instructor_availability(user, instructor):
+    return bool(
+        (user.is_authenticated and instructor.user_id == user.id)
+        or can_manage_organization(user, instructor.home_organization)
+    )
+
+
+def require_instructor_availability_manager(user, instructor):
+    if not can_manage_instructor_availability(user, instructor):
+        raise PermissionDenied("You cannot manage this instructor's availability.")

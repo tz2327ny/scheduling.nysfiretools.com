@@ -5,13 +5,28 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .forms import CourseForm, InstructorForm, TrainingEventForm, TrainingSessionFormSet
-from .models import Course, Instructor, InstructorAssignment, Organization, TrainingEvent
+from .forms import (
+    AvailabilityBlockForm,
+    CourseForm,
+    InstructorForm,
+    TrainingEventForm,
+    TrainingSessionFormSet,
+)
+from .models import (
+    AvailabilityBlock,
+    Course,
+    Instructor,
+    InstructorAssignment,
+    Organization,
+    TrainingEvent,
+)
 from .permissions import (
     can_manage_courses,
+    can_manage_instructor_availability,
     login_required_unless_debug,
     managed_organizations,
     require_course_manager,
+    require_instructor_availability_manager,
     require_organization_manager,
 )
 from .services import eligible_instructors_for_session
@@ -165,6 +180,11 @@ def instructor_list(request):
             filter=Q(assignments__session__ends_at__gte=timezone.now()),
             distinct=True,
         ),
+        availability_count=Count(
+            "availability_blocks",
+            filter=Q(availability_blocks__ends_at__gte=timezone.now()),
+            distinct=True,
+        ),
     )
     organization = request.GET.get("organization")
     if organization:
@@ -305,6 +325,97 @@ def instructor_edit(request, pk):
         request,
         "scheduling/instructor_form.html",
         {"form": form, "page_heading": f"Edit {instructor.full_name}"},
+    )
+
+
+@login_required_unless_debug
+def instructor_availability(request, pk):
+    instructor = get_object_or_404(
+        Instructor.objects.select_related("home_organization"),
+        pk=pk,
+    )
+    entries = instructor.availability_blocks.filter(ends_at__gte=timezone.now())
+    return render(
+        request,
+        "scheduling/availability_list.html",
+        {
+            "instructor": instructor,
+            "entries": entries,
+            "can_manage": can_manage_instructor_availability(request.user, instructor),
+        },
+    )
+
+
+@login_required_unless_debug
+def availability_create(request, pk):
+    instructor = get_object_or_404(Instructor, pk=pk)
+    require_instructor_availability_manager(request.user, instructor)
+    entry = AvailabilityBlock(instructor=instructor)
+    if request.method == "POST":
+        form = AvailabilityBlockForm(request.POST, instance=entry)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Availability was added.")
+            return redirect("instructor_availability", pk=instructor.pk)
+    else:
+        form = AvailabilityBlockForm(instance=entry)
+    return render(
+        request,
+        "scheduling/availability_form.html",
+        {
+            "form": form,
+            "instructor": instructor,
+            "page_heading": "Add availability",
+        },
+    )
+
+
+@login_required_unless_debug
+def availability_edit(request, pk, entry_pk):
+    instructor = get_object_or_404(Instructor, pk=pk)
+    require_instructor_availability_manager(request.user, instructor)
+    entry = get_object_or_404(
+        AvailabilityBlock,
+        pk=entry_pk,
+        instructor=instructor,
+    )
+    if request.method == "POST":
+        form = AvailabilityBlockForm(request.POST, instance=entry)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Availability was updated.")
+            return redirect("instructor_availability", pk=instructor.pk)
+    else:
+        form = AvailabilityBlockForm(instance=entry)
+    return render(
+        request,
+        "scheduling/availability_form.html",
+        {
+            "form": form,
+            "instructor": instructor,
+            "entry": entry,
+            "page_heading": "Edit availability",
+        },
+    )
+
+
+@login_required_unless_debug
+def availability_delete(request, pk, entry_pk):
+    instructor = get_object_or_404(Instructor, pk=pk)
+    require_instructor_availability_manager(request.user, instructor)
+    entry = get_object_or_404(
+        AvailabilityBlock,
+        pk=entry_pk,
+        instructor=instructor,
+    )
+    if request.method == "POST":
+        entry.delete()
+        messages.success(request, "Availability was removed.")
+        return redirect("instructor_availability", pk=instructor.pk)
+    return render(
+        request,
+        "scheduling/availability_confirm_delete.html",
+        {"instructor": instructor, "entry": entry},
     )
 
 # Create your views here.

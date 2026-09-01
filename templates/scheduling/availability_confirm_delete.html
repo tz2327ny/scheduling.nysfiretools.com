@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Remove availability · NYS Fire{% endblock %}
+{% block page_title %}Remove availability{% endblock %}
+
+{% block content %}
+<form class="form-shell narrow" method="post">
+  {% csrf_token %}
+  <section class="panel form-panel confirmation-panel">
+    <p class="eyebrow">{{ instructor.full_name }}</p>
+    <h2>Remove this {{ entry.get_status_display|lower }} entry?</h2>
+    <p>{{ entry.starts_at|date:"M j, Y · g:i A" }} through {{ entry.ends_at|date:"M j, Y · g:i A" }}</p>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'instructor_availability' instructor.pk %}">Keep entry</a><button class="button danger" type="submit">Remove availability</button></div>
+</form>
+{% endblock %}

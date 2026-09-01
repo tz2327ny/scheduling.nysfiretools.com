@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from accounts.models import UserOrganizationRole
 from scheduling.models import (
+    AvailabilityBlock,
     Course,
     CourseAuthorization,
     Instructor,
@@ -162,6 +163,49 @@ class EligibleInstructorTests(SchedulingTestCase):
 
         self.assertNotIn(instructor, eligible)
 
+    def test_preferred_availability_is_ranked_first(self):
+        default_instructor = self.make_instructor("Able", self.jefferson)
+        preferred_instructor = self.make_instructor("Zulu", self.jefferson)
+        AvailabilityBlock.objects.create(
+            instructor=preferred_instructor,
+            status=AvailabilityBlock.Status.AVAILABLE,
+            starts_at=self.session.starts_at,
+            ends_at=self.session.ends_at,
+            notes="Preferred daytime assignment",
+        )
+
+        eligible = list(
+            eligible_instructors_for_session(
+                self.session,
+                InstructorAssignment.Role.ASSISTANT,
+            )
+        )
+
+        self.assertLess(
+            eligible.index(preferred_instructor),
+            eligible.index(default_instructor),
+        )
+        self.assertEqual(
+            eligible[eligible.index(preferred_instructor)].session_availability,
+            "available",
+        )
+
+    def test_unavailable_instructor_is_excluded(self):
+        instructor = self.make_instructor("Unavailable", self.jefferson)
+        AvailabilityBlock.objects.create(
+            instructor=instructor,
+            status=AvailabilityBlock.Status.UNAVAILABLE,
+            starts_at=self.session.starts_at,
+            ends_at=self.session.ends_at,
+        )
+
+        eligible = eligible_instructors_for_session(
+            self.session,
+            InstructorAssignment.Role.ASSISTANT,
+        )
+
+        self.assertNotIn(instructor, eligible)
+
 
 class CountyPermissionTests(SchedulingTestCase):
     def setUp(self):
@@ -204,6 +248,18 @@ class CountyPermissionTests(SchedulingTestCase):
         response = self.client.get(reverse("training_edit", args=(lewis_event.pk,)))
 
         self.assertEqual(response.status_code, 403)
+
+    @override_settings(DEBUG=False)
+    def test_admin_manages_availability_only_for_assigned_organization(self):
+        own_response = self.client.get(
+            reverse("availability_create", args=(self.jefferson_instructor.pk,))
+        )
+        other_response = self.client.get(
+            reverse("availability_create", args=(self.lewis_instructor.pk,))
+        )
+
+        self.assertEqual(own_response.status_code, 200)
+        self.assertEqual(other_response.status_code, 403)
 
 
 class AuthenticationTests(TestCase):
@@ -261,6 +317,56 @@ class CourseOfferingNumberTests(SchedulingTestCase):
         )
 
         self.assertEqual(event.offering_number, "01-01-03-049")
+
+
+class AvailabilityTests(SchedulingTestCase):
+    def test_operational_availability_choices(self):
+        self.assertEqual(
+            list(AvailabilityBlock.Status.choices),
+            [
+                ("available", "Available (preferred time)"),
+                ("tentative", "Tentative"),
+                ("unavailable", "Unavailable"),
+            ],
+        )
+
+    def test_overlapping_entries_are_rejected(self):
+        instructor = self.make_instructor("Available", self.jefferson)
+        AvailabilityBlock.objects.create(
+            instructor=instructor,
+            status=AvailabilityBlock.Status.AVAILABLE,
+            starts_at=self.session.starts_at,
+            ends_at=self.session.ends_at,
+        )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This entry overlaps another availability entry for this instructor.",
+        ):
+            AvailabilityBlock.objects.create(
+                instructor=instructor,
+                status=AvailabilityBlock.Status.TENTATIVE,
+                starts_at=self.session.starts_at + timedelta(hours=1),
+                ends_at=self.session.ends_at + timedelta(hours=1),
+            )
+
+    @override_settings(DEBUG=False)
+    def test_linked_instructor_can_manage_own_availability(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="instructor@example.com",
+            password="test-password",
+        )
+        instructor = self.make_instructor("Self", self.jefferson)
+        instructor.user = user
+        instructor.save()
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse("availability_create", args=(instructor.pk,))
+        )
+
+        self.assertEqual(response.status_code, 200)
 
 
 class CourseManagementTests(TestCase):

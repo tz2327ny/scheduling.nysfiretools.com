@@ -71,6 +71,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .button.primary { background: var(--red-700); color: white; box-shadow: 0 5px 12px rgba(169,47,50,.18); }
 .button.primary:hover { background: #91272a; }
 .button.secondary { border-color: var(--slate-300); background: white; color: var(--navy-900); }
+.button.danger { background: var(--red-700); color: white; }
+.button.danger:hover { background: #91272a; }
 
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .stat-card { min-height: 126px; padding: 19px 20px; border: 1px solid var(--slate-200); border-radius: var(--radius); background: var(--paper); box-shadow: 0 5px 20px rgba(15,35,55,.04); }
@@ -104,6 +106,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .status.confirmed { background: var(--green-100); color: var(--green-700); }
 .status.proposed { background: var(--blue-100); color: #245f83; }
 .status.inactive { background: var(--slate-100); color: var(--slate-700); }
+.status.available { background: var(--green-100); color: var(--green-700); }
+.status.tentative { background: var(--amber-100); color: var(--amber-700); }
+.status.unavailable { background: var(--red-100); color: var(--red-700); }
 .intensive { background: var(--red-100); color: var(--red-700); }
 .staffing-state { text-align: right; color: var(--green-700); }
 .staffing-state strong, .staffing-state span { display: block; }
@@ -150,11 +155,13 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .data-head { min-height: 42px; color: var(--slate-500); background: #f8fafb; font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .data-row .status { display: inline-flex; font-style: normal; }
 .row-arrow { color: var(--blue-600); font-size: 16px; text-align: right; }
-.instructor-table .data-row { grid-template-columns: minmax(210px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) 90px 70px 45px; }
+.instructor-table .data-row { grid-template-columns: minmax(210px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) 90px 70px 130px; }
+.availability-table .data-row { grid-template-columns: 165px 170px 170px minmax(190px, 1fr) 60px; }
 .person-cell { display: flex; align-items: center; gap: 10px; }
 .avatar.small { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; font-style: normal; }
 .avatar.tiny { flex: 0 0 auto; width: 29px; height: 29px; border-radius: 50%; font-size: 9px; font-style: normal; }
 .text-link { color: var(--blue-600); font-size: 10px; font-weight: 800; }
+.row-actions { display: grid; gap: 3px; }
 .muted { color: var(--slate-500); font-size: 10px; }
 
 .card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
@@ -201,6 +208,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .form-shell { max-width: 960px; margin: 24px auto 0; }
 .form-shell.narrow { max-width: 760px; }
 .form-panel { margin-bottom: 16px; }
+.confirmation-panel { padding: 24px; }
+.confirmation-panel p:last-child { margin: 10px 0 0; color: var(--slate-500); }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; }
 .field { display: block; color: var(--slate-700); font-size: 10px; font-weight: 800; }
 .field.wide { grid-column: 1 / -1; }

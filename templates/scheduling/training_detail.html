@@ -29,7 +29,7 @@
       <div class="session-section eligible-section">
         <div><h3>Qualified and currently available</h3><p>Filtered by course authorization, availability, existing assignments, and travel preference.</p></div>
         <div class="candidate-list">
-          {% for instructor in row.eligible_assistants %}<span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %} · Regional{% endif %}</small></span>{% empty %}<span class="muted">No eligible instructors found.</span>{% endfor %}
+          {% for instructor in row.eligible_assistants %}<span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %} · Regional{% endif %}{% if instructor.session_availability == 'available' %} · Preferred time{% elif instructor.session_availability == 'tentative' %} · Tentative{% endif %}</small></span>{% empty %}<span class="muted">No eligible instructors found.</span>{% endfor %}
         </div>
       </div>
     </article>

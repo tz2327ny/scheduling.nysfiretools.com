@@ -297,8 +297,9 @@ class InstructorAssignment(models.Model):
 
 class AvailabilityBlock(models.Model):
     class Status(models.TextChoices):
+        AVAILABLE = "available", "Available (preferred time)"
+        TENTATIVE = "tentative", "Tentative"
         UNAVAILABLE = "unavailable", "Unavailable"
-        TENTATIVE = "tentative", "Tentatively available"
 
     instructor = models.ForeignKey(
         Instructor,
@@ -314,8 +315,27 @@ class AvailabilityBlock(models.Model):
         ordering = ("starts_at",)
 
     def clean(self):
+        super().clean()
         if self.ends_at <= self.starts_at:
             raise ValidationError({"ends_at": "Availability must end after it starts."})
+        if not self.instructor_id:
+            return
+        overlaps = AvailabilityBlock.objects.filter(
+            instructor=self.instructor,
+            starts_at__lt=self.ends_at,
+            ends_at__gt=self.starts_at,
+        ).exclude(pk=self.pk)
+        if overlaps.exists():
+            raise ValidationError(
+                "This entry overlaps another availability entry for this instructor."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.instructor} — {self.get_status_display()}"
 
 
 class AssistanceRequest(models.Model):

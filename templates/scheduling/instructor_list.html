@@ -22,7 +22,7 @@
 <section class="panel table-panel">
   <div class="data-table instructor-table" role="table" aria-label="Instructor directory">
     <div class="data-row data-head" role="row">
-      <span>Instructor</span><span>Assignment</span><span>Travel</span><span>Authorizations</span><span>Upcoming</span><span></span>
+      <span>Instructor</span><span>Assignment</span><span>Travel</span><span>Authorizations</span><span>Upcoming</span><span>Actions</span>
     </div>
     {% for instructor in instructors %}
     <div class="data-row" role="row">
@@ -31,7 +31,7 @@
       <span>{{ instructor.get_travel_preference_display }}</span>
       <span>{{ instructor.authorization_count }}</span>
       <span>{{ instructor.upcoming_assignment_count }}</span>
-      <span>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit</a>{% else %}<span class="muted">View</span>{% endif %}</span>
+      <span class="row-actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} future entr{{ instructor.availability_count|pluralize:"y,ies" }}</small>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
     </div>
     {% empty %}<div class="empty-state">No instructors match this filter.</div>{% endfor %}
   </div>

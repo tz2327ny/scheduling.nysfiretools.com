@@ -9,6 +9,7 @@ A standalone course and instructor coordination system for Jefferson, Lewis, St.
 - County and Academy instructor directory
 - Course-specific instructor authorizations
 - Instructor travel preferences
+- Instructor-entered preferred, tentative, and unavailable time windows
 - Purposed, confirmed, completed, and cancelled training
 - Unique Course Offering Numbers required before confirmation
 - Multi-session training dates

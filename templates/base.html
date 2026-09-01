@@ -24,6 +24,7 @@
         <a class="nav-item" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
         <a class="nav-item" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Course library</a>
         <a class="nav-item" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
+        {% if user.is_authenticated and user.instructor_profile %}<a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>{% endif %}
         <a class="nav-item" href="#requests"><span aria-hidden="true">↗</span> Assistance requests</a>
       </nav>
       <div class="sidebar-foot">

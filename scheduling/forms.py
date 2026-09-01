@@ -1,11 +1,27 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Course, Instructor, TrainingEvent, TrainingSession
+from .models import AvailabilityBlock, Course, Instructor, TrainingEvent, TrainingSession
 
 
 class DateTimeInput(forms.DateTimeInput):
     input_type = "datetime-local"
+
+
+class AvailabilityBlockForm(forms.ModelForm):
+    class Meta:
+        model = AvailabilityBlock
+        fields = ("status", "starts_at", "ends_at", "notes")
+        widgets = {
+            "starts_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
+            "ends_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
+            "notes": forms.TextInput(
+                attrs={
+                    "placeholder": "e.g., preferred evenings or availability depends on work schedule"
+                }
+            ),
+        }
+        labels = {"status": "Availability status"}
 
 
 class CourseForm(forms.ModelForm):

@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Case, CharField, IntegerField, Q, Value, When
 from django.utils import timezone
 
 from .models import (
@@ -35,6 +35,16 @@ def eligible_instructors_for_session(session, role):
         starts_at__lt=session.ends_at,
         ends_at__gt=session.starts_at,
     ).values_list("instructor_id", flat=True)
+    preferred_ids = AvailabilityBlock.objects.filter(
+        status=AvailabilityBlock.Status.AVAILABLE,
+        starts_at__lt=session.ends_at,
+        ends_at__gt=session.starts_at,
+    ).values_list("instructor_id", flat=True)
+    tentative_ids = AvailabilityBlock.objects.filter(
+        status=AvailabilityBlock.Status.TENTATIVE,
+        starts_at__lt=session.ends_at,
+        ends_at__gt=session.starts_at,
+    ).values_list("instructor_id", flat=True)
     assigned_ids = InstructorAssignment.objects.filter(
         confirmed=True,
         session__starts_at__lt=session.ends_at,
@@ -46,4 +56,21 @@ def eligible_instructors_for_session(session, role):
         Q(home_organization=session.event.host_organization)
         | ~Q(travel_preference=Instructor.TravelPreference.LOCAL_ONLY)
     )
-    return instructors.select_related("home_organization").order_by("last_name", "first_name")
+    return (
+        instructors.select_related("home_organization")
+        .annotate(
+            availability_rank=Case(
+                When(pk__in=preferred_ids, then=Value(0)),
+                When(pk__in=tentative_ids, then=Value(2)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            session_availability=Case(
+                When(pk__in=preferred_ids, then=Value("available")),
+                When(pk__in=tentative_ids, then=Value("tentative")),
+                default=Value("unspecified"),
+                output_field=CharField(),
+            ),
+        )
+        .order_by("availability_rank", "last_name", "first_name")
+    )

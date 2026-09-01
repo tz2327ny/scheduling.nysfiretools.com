@@ -13,6 +13,26 @@ urlpatterns = [
     path("instructors/", views.instructor_list, name="instructor_list"),
     path("instructors/new/", views.instructor_create, name="instructor_create"),
     path("instructors/<int:pk>/edit/", views.instructor_edit, name="instructor_edit"),
+    path(
+        "instructors/<int:pk>/availability/",
+        views.instructor_availability,
+        name="instructor_availability",
+    ),
+    path(
+        "instructors/<int:pk>/availability/new/",
+        views.availability_create,
+        name="availability_create",
+    ),
+    path(
+        "instructors/<int:pk>/availability/<int:entry_pk>/edit/",
+        views.availability_edit,
+        name="availability_edit",
+    ),
+    path(
+        "instructors/<int:pk>/availability/<int:entry_pk>/delete/",
+        views.availability_delete,
+        name="availability_delete",
+    ),
     path("training/new/", views.training_create, name="training_create"),
     path("training/<int:pk>/", views.training_detail, name="training_detail"),
     path("training/<int:pk>/edit/", views.training_edit, name="training_edit"),
