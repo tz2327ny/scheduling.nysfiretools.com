@@ -103,7 +103,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .status, .intensive { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 99px; font-size: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .status.confirmed { background: var(--green-100); color: var(--green-700); }
 .status.proposed { background: var(--blue-100); color: #245f83; }
-.status.tentative { background: var(--amber-100); color: var(--amber-700); }
+.status.inactive { background: var(--slate-100); color: var(--slate-700); }
 .intensive { background: var(--red-100); color: var(--red-700); }
 .staffing-state { text-align: right; color: var(--green-700); }
 .staffing-state strong, .staffing-state span { display: block; }
@@ -163,6 +163,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .course-code { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 6px; background: var(--slate-100); color: var(--navy-800); font-size: 9px; font-weight: 800; letter-spacing: .04em; }
 .course-card h2 { margin-top: 16px; line-height: 1.3; }
 .course-card > p { min-height: 42px; margin: 8px 0 17px; color: var(--slate-500); font-size: 10px; line-height: 1.55; }
+.course-edit-link { margin: 16px -20px -20px; border-top: 1px solid var(--slate-100); border-radius: 0 0 var(--radius) var(--radius); }
 .course-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
 .course-metrics div { padding: 10px; border-radius: 8px; background: var(--slate-100); }
 .course-metrics dt { color: var(--slate-500); font-size: 8px; font-weight: 800; text-transform: uppercase; }

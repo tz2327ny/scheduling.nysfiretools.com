@@ -144,11 +144,10 @@ class CourseAuthorization(models.Model):
 
 class TrainingEvent(models.Model):
     class Status(models.TextChoices):
-        PROPOSED = "proposed", "Proposed"
-        TENTATIVE = "tentative", "Tentative"
+        PROPOSED = "proposed", "Purposed"
         CONFIRMED = "confirmed", "Confirmed"
         COMPLETED = "completed", "Completed"
-        CANCELED = "canceled", "Canceled"
+        CANCELED = "canceled", "Cancelled"
 
     course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name="events")
     host_organization = models.ForeignKey(
@@ -237,7 +236,6 @@ class InstructorAssignment(models.Model):
             confirmed=True,
             session__event__status__in=(
                 TrainingEvent.Status.PROPOSED,
-                TrainingEvent.Status.TENTATIVE,
                 TrainingEvent.Status.CONFIRMED,
             ),
             session__starts_at__lt=self.session.ends_at,

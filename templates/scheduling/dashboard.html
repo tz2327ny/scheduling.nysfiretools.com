@@ -19,7 +19,7 @@
     <span class="stat-note good"><i></i> Upcoming</span>
   </article>
   <article class="stat-card">
-    <span class="stat-label">Proposed & tentative</span>
+    <span class="stat-label">Purposed courses</span>
     <strong>{{ proposed_count }}</strong>
     <span class="stat-note"><i></i> Awaiting coordination</span>
   </article>
@@ -42,7 +42,7 @@
       <div class="filter-pills" aria-label="Training filters">
         <button class="pill active" type="button">All</button>
         <button class="pill" type="button">Confirmed</button>
-        <button class="pill" type="button">Proposed</button>
+        <button class="pill" type="button">Purposed</button>
       </div>
     </div>
     <div class="training-list">
@@ -75,7 +75,7 @@
       {% empty %}
       <div class="empty-state">
         <strong>No upcoming training yet</strong>
-        <p>Proposed and confirmed courses will appear here.</p>
+        <p>Purposed and confirmed courses will appear here.</p>
       </div>
       {% endfor %}
     </div>

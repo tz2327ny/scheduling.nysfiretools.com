@@ -37,3 +37,15 @@ def can_manage_organization(user, organization):
 def require_organization_manager(user, organization):
     if not can_manage_organization(user, organization):
         raise PermissionDenied("You do not manage this organization.")
+
+
+def can_manage_courses(user):
+    return bool(
+        (user.is_authenticated and user.is_superuser)
+        or (settings.DEBUG and not user.is_authenticated)
+    )
+
+
+def require_course_manager(user):
+    if not can_manage_courses(user):
+        raise PermissionDenied("Only a system administrator can manage the course library.")

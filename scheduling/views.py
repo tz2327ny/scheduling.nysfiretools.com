@@ -5,11 +5,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
 from django.utils import timezone
 
-from .forms import InstructorForm, TrainingEventForm, TrainingSessionFormSet
+from .forms import CourseForm, InstructorForm, TrainingEventForm, TrainingSessionFormSet
 from .models import Course, Instructor, InstructorAssignment, Organization, TrainingEvent
 from .permissions import (
+    can_manage_courses,
     login_required_unless_debug,
     managed_organizations,
+    require_course_manager,
     require_organization_manager,
 )
 from .services import eligible_instructors_for_session
@@ -44,10 +46,7 @@ def dashboard(request):
     confirmed_count = sum(
         event.status == TrainingEvent.Status.CONFIRMED for event in upcoming
     )
-    proposed_count = sum(
-        event.status in (TrainingEvent.Status.PROPOSED, TrainingEvent.Status.TENTATIVE)
-        for event in upcoming
-    )
+    proposed_count = sum(event.status == TrainingEvent.Status.PROPOSED for event in upcoming)
     needs_instructors = sum(event.staffing_gap > 0 for event in upcoming)
 
     context = {
@@ -90,7 +89,8 @@ def schedule(request):
 
 @login_required_unless_debug
 def course_list(request):
-    courses = Course.objects.filter(active=True).annotate(
+    course_manager = can_manage_courses(request.user)
+    courses = (Course.objects.all() if course_manager else Course.objects.filter(active=True)).annotate(
         authorized_count=Count(
             "instructor_authorizations",
             filter=Q(instructor_authorizations__status="active"),
@@ -102,14 +102,54 @@ def course_list(request):
                 events__sessions__ends_at__gte=timezone.now(),
                 events__status__in=(
                     TrainingEvent.Status.PROPOSED,
-                    TrainingEvent.Status.TENTATIVE,
                     TrainingEvent.Status.CONFIRMED,
                 ),
             ),
             distinct=True,
         ),
     )
-    return render(request, "scheduling/course_list.html", {"courses": courses})
+    return render(
+        request,
+        "scheduling/course_list.html",
+        {"courses": courses, "can_manage_courses": course_manager},
+    )
+
+
+@login_required_unless_debug
+def course_create(request):
+    require_course_manager(request.user)
+    if request.method == "POST":
+        form = CourseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Course was created.")
+            return redirect("course_list")
+    else:
+        form = CourseForm()
+    return render(
+        request,
+        "scheduling/course_form.html",
+        {"form": form, "page_heading": "Add course"},
+    )
+
+
+@login_required_unless_debug
+def course_edit(request, pk):
+    require_course_manager(request.user)
+    course = get_object_or_404(Course, pk=pk)
+    if request.method == "POST":
+        form = CourseForm(request.POST, instance=course)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Course was updated.")
+            return redirect("course_list")
+    else:
+        form = CourseForm(instance=course)
+    return render(
+        request,
+        "scheduling/course_form.html",
+        {"form": form, "page_heading": f"Edit {course.code}"},
+    )
 
 
 @login_required_unless_debug

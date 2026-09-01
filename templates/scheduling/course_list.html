@@ -6,6 +6,7 @@
 {% block content %}
 <section class="page-actions">
   <p>Instructor staffing requirements and course-specific authorization coverage.</p>
+  {% if can_manage_courses %}<a class="button primary" href="{% url 'course_create' %}"><span aria-hidden="true">＋</span> Add course</a>{% endif %}
 </section>
 
 <section class="card-grid">
@@ -13,7 +14,7 @@
   <article class="course-card">
     <div class="course-card-head">
       <span class="course-code">{{ course.code }}</span>
-      {% if course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}
+      <span>{% if not course.active %}<span class="status inactive">Inactive</span>{% endif %}{% if course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</span>
     </div>
     <h2>{{ course.name }}</h2>
     <p>{{ course.description|default:"Course authorization and staffing details." }}</p>
@@ -23,7 +24,8 @@
       <div><dt>Authorized</dt><dd>{{ course.authorized_count }}</dd></div>
       <div><dt>Upcoming</dt><dd>{{ course.upcoming_count }}</dd></div>
     </dl>
+    {% if can_manage_courses %}<a class="panel-link course-edit-link" href="{% url 'course_edit' course.pk %}">Edit course <span aria-hidden="true">→</span></a>{% endif %}
   </article>
-  {% empty %}<div class="empty-state">No active courses are in the library.</div>{% endfor %}
+  {% empty %}<div class="empty-state"><strong>No courses are in the library.</strong>{% if can_manage_courses %}<p>Add the first course to begin assigning instructor authorizations.</p><a class="button primary" href="{% url 'course_create' %}">Add first course</a>{% endif %}</div>{% endfor %}
 </section>
 {% endblock %}

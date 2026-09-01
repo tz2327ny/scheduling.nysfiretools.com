@@ -1,11 +1,28 @@
 from django import forms
 from django.forms import inlineformset_factory
 
-from .models import Instructor, TrainingEvent, TrainingSession
+from .models import Course, Instructor, TrainingEvent, TrainingSession
 
 
 class DateTimeInput(forms.DateTimeInput):
     input_type = "datetime-local"
+
+
+class CourseForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = (
+            "code",
+            "name",
+            "description",
+            "minimum_instructors",
+            "recommended_instructors",
+            "instructor_intensive",
+            "active",
+        )
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 5}),
+        }
 
 
 class TrainingEventForm(forms.ModelForm):

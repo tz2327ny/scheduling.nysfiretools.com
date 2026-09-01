@@ -210,3 +210,57 @@ class AuthenticationTests(TestCase):
     def test_anonymous_dashboard_redirects_to_login(self):
         response = self.client.get(reverse("dashboard"))
         self.assertRedirects(response, f"{reverse('login')}?next=/")
+
+
+class TrainingStatusTests(TestCase):
+    def test_training_statuses_match_operational_workflow(self):
+        self.assertEqual(
+            list(TrainingEvent.Status.choices),
+            [
+                ("proposed", "Purposed"),
+                ("confirmed", "Confirmed"),
+                ("completed", "Completed"),
+                ("canceled", "Cancelled"),
+            ],
+        )
+
+
+class CourseManagementTests(TestCase):
+    @override_settings(DEBUG=False)
+    def test_system_administrator_can_create_course(self):
+        User = get_user_model()
+        administrator = User.objects.create_superuser(
+            username="system@example.com",
+            email="system@example.com",
+            password="test-password",
+        )
+        self.client.force_login(administrator)
+
+        response = self.client.post(
+            reverse("course_create"),
+            {
+                "code": "01-05-0099",
+                "name": "Test Course",
+                "description": "Used to verify course management.",
+                "minimum_instructors": 1,
+                "recommended_instructors": 2,
+                "instructor_intensive": "on",
+                "active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("course_list"))
+        self.assertTrue(Course.objects.filter(code="01-05-0099").exists())
+
+    @override_settings(DEBUG=False)
+    def test_non_system_administrator_cannot_create_course(self):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="county@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("course_create"))
+
+        self.assertEqual(response.status_code, 403)
