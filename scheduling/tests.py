@@ -455,6 +455,9 @@ class AvailabilityTests(SchedulingTestCase):
         self.assertContains(response, "September 2026")
         self.assertContains(response, 'data-calendar-date="2026-09-14"')
         self.assertContains(response, 'data-selectable-date="2026-09-14"')
+        self.assertContains(response, "Select one or more dates on the calendar below")
+        self.assertContains(response, "data-save-availability")
+        self.assertNotContains(response, "data-availability-selection method=\"post\" hidden")
 
     @override_settings(DEBUG=False)
     def test_calendar_quick_form_creates_all_day_availability(self):

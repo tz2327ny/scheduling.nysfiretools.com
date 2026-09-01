@@ -17,13 +17,13 @@
     <a class="calendar-nav" href="?month={{ next_month|date:'Y-m' }}" aria-label="Next month">→</a>
   </div>
   {% if can_manage %}
-  <div class="calendar-instructions">Click a day to select it. Click a second day to extend the selection into a range.</div>
-  <form class="calendar-selection calendar-quick-form" data-availability-selection method="post" {% if not quick_form.errors %}hidden{% endif %}>
+  <div class="calendar-instructions">Click anywhere on a day to select it. Click a second day to fill an entire date range.</div>
+  <form class="calendar-selection calendar-quick-form" data-availability-selection method="post">
     {% csrf_token %}
     <input type="hidden" name="month" value="{{ month_start|date:'Y-m' }}">
     <input type="hidden" name="starts_at" data-starts-at value="{{ quick_form.starts_at.value|default:'' }}">
     <input type="hidden" name="ends_at" data-ends-at value="{{ quick_form.ends_at.value|default:'' }}">
-    <div class="quick-form-heading"><strong data-selection-label>{% if quick_form.errors %}Review this availability entry{% endif %}</strong><button class="text-button" type="button" data-clear-selection>Clear</button></div>
+    <div class="quick-form-heading"><strong data-selection-label>{% if quick_form.errors %}Review this availability entry{% else %}Select one or more dates on the calendar below{% endif %}</strong><button class="text-button" type="button" data-clear-selection {% if not quick_form.errors %}hidden{% endif %}>Clear dates</button></div>
     {% if quick_form.errors %}<div class="form-errors quick-form-errors">{{ quick_form.errors }}</div>{% endif %}
     <div class="quick-form-fields">
       <label><span>Status</span>{{ quick_form.status }}</label>
@@ -31,7 +31,7 @@
       <label data-time-field><span>Start time</span><input type="time" value="08:00" data-start-time></label>
       <label data-time-field><span>End time</span><input type="time" value="17:00" data-end-time></label>
       <label class="quick-notes"><span>Notes or conditions</span>{{ quick_form.notes }}</label>
-      <button class="button primary" type="submit">Save availability</button>
+      <button class="button primary" type="submit" data-save-availability {% if not quick_form.errors %}disabled{% endif %}>Save availability</button>
     </div>
   </form>
   {% endif %}
@@ -43,7 +43,7 @@
       {% for week in calendar_weeks %}
         {% for day in week %}
         <div class="availability-day {% if not day.in_month %}outside-month{% elif can_manage %}selectable{% endif %} {% if day.is_today %}today{% endif %}" data-calendar-cell="{{ day.date|date:'Y-m-d' }}" {% if can_manage and day.in_month %}data-selectable-date="{{ day.date|date:'Y-m-d' }}"{% endif %}>
-          <button class="calendar-day-select" type="button" data-calendar-date="{{ day.date|date:'Y-m-d' }}" {% if not can_manage or not day.in_month %}disabled{% endif %}><span>{{ day.date.day }}</span></button>
+          <button class="calendar-day-select" type="button" data-calendar-date="{{ day.date|date:'Y-m-d' }}" {% if not can_manage or not day.in_month %}disabled{% endif %}><span>{{ day.date.day }}</span>{% if can_manage and day.in_month %}<small>Add</small>{% endif %}</button>
           <div class="calendar-entries">
             {% for entry in day.entries %}
               {% if can_manage %}<a class="calendar-entry {{ entry.status }}" href="{% url 'availability_edit' instructor.pk entry.pk %}">{{ entry.get_status_display }}</a>{% else %}<span class="calendar-entry {{ entry.status }}">{{ entry.get_status_display }}</span>{% endif %}
@@ -75,4 +75,4 @@
 </section>
 {% endblock %}
 
-{% block extra_scripts %}<script src="{% static 'js/availability-calendar.js' %}?v=5" defer></script>{% endblock %}
+{% block extra_scripts %}<script src="{% static 'js/availability-calendar.js' %}?v=6" defer></script>{% endblock %}

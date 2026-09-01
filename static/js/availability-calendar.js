@@ -12,6 +12,7 @@
   const allDayInput = quickForm?.querySelector('input[name="all_day"]');
   const startTimeInput = calendar.querySelector("[data-start-time]");
   const endTimeInput = calendar.querySelector("[data-end-time]");
+  const saveButton = calendar.querySelector("[data-save-availability]");
   const timeFields = [...calendar.querySelectorAll("[data-time-field]")];
 
   if (!quickForm || !selectionLabel || !clearButton || !startsInput || !endsInput) return;
@@ -69,12 +70,16 @@
       cell.classList.toggle("range-end", date === endDate);
     });
     if (!startDate || !endDate) {
-      quickForm.hidden = true;
-      selectionLabel.textContent = "";
+      quickForm.classList.add("empty-selection");
+      selectionLabel.textContent = "Select one or more dates on the calendar below";
+      clearButton.hidden = true;
+      if (saveButton) saveButton.disabled = true;
       updateDateTimeValues();
       return;
     }
-    quickForm.hidden = false;
+    quickForm.classList.remove("empty-selection");
+    clearButton.hidden = false;
+    if (saveButton) saveButton.disabled = false;
     selectionLabel.textContent = startDate === endDate
       ? readableDate(startDate)
       : `${readableDate(startDate)} – ${readableDate(endDate)}`;
