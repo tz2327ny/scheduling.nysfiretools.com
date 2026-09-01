@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Course Library · NYS Fire{% endblock %}
+{% block page_title %}Course library{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <p>Instructor staffing requirements and course-specific authorization coverage.</p>
+</section>
+
+<section class="card-grid">
+  {% for course in courses %}
+  <article class="course-card">
+    <div class="course-card-head">
+      <span class="course-code">{{ course.code }}</span>
+      {% if course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}
+    </div>
+    <h2>{{ course.name }}</h2>
+    <p>{{ course.description|default:"Course authorization and staffing details." }}</p>
+    <dl class="course-metrics">
+      <div><dt>Minimum</dt><dd>{{ course.minimum_instructors }}</dd></div>
+      <div><dt>Recommended</dt><dd>{{ course.recommended_instructors }}</dd></div>
+      <div><dt>Authorized</dt><dd>{{ course.authorized_count }}</dd></div>
+      <div><dt>Upcoming</dt><dd>{{ course.upcoming_count }}</dd></div>
+    </dl>
+  </article>
+  {% empty %}<div class="empty-state">No active courses are in the library.</div>{% endfor %}
+</section>
+{% endblock %}

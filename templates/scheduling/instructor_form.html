@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_heading }} · NYS Fire{% endblock %}
+{% block page_title %}{{ page_heading }}{% endblock %}
+
+{% block content %}
+<form class="form-shell narrow" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Instructor profile</p><h2>Assignment and contact information</h2></div></div>
+    <div class="form-grid">
+      {% for field in form %}
+      <label class="field {% if field.name == 'travel_notes' %}wide{% endif %}">
+        <span>{{ field.label }}</span>{{ field }}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'instructor_list' %}">Cancel</a><button class="button primary" type="submit">Save instructor</button></div>
+</form>
+{% endblock %}

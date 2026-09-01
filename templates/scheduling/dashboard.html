@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="toolbar" aria-label="Schedule actions">
+  <div class="date-context">
+    <span class="date-icon" aria-hidden="true">{{ today|date:"d" }}</span>
+    <div><strong>{{ today|date:"l, F j" }}</strong><span>Showing the next regional training activity</span></div>
+  </div>
+  <div class="toolbar-actions">
+    <a class="button secondary" href="{% url 'schedule' %}">View calendar</a>
+    <a class="button primary" href="{% url 'training_create' %}"><span aria-hidden="true">＋</span> Propose training</a>
+  </div>
+</section>
+
+<section class="stats-grid" aria-label="Schedule summary">
+  <article class="stat-card">
+    <span class="stat-label">Confirmed courses</span>
+    <strong>{{ confirmed_count }}</strong>
+    <span class="stat-note good"><i></i> Upcoming</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Proposed & tentative</span>
+    <strong>{{ proposed_count }}</strong>
+    <span class="stat-note"><i></i> Awaiting coordination</span>
+  </article>
+  <article class="stat-card attention">
+    <span class="stat-label">Need instructors</span>
+    <strong>{{ needs_instructors }}</strong>
+    <span class="stat-note warning"><i></i> Action recommended</span>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Active instructors</span>
+    <strong>{{ active_instructors }}</strong>
+    <span class="stat-note"><i></i> County and regional</span>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <div class="panel schedule-panel" id="schedule">
+    <div class="panel-header">
+      <div><p class="eyebrow">Regional awareness</p><h2>Upcoming training</h2></div>
+      <div class="filter-pills" aria-label="Training filters">
+        <button class="pill active" type="button">All</button>
+        <button class="pill" type="button">Confirmed</button>
+        <button class="pill" type="button">Proposed</button>
+      </div>
+    </div>
+    <div class="training-list">
+      {% for event in upcoming %}
+      <a class="training-row" href="{% url 'training_detail' event.pk %}">
+        <div class="date-tile">
+          <span>{{ event.next_session|date:"M" }}</span>
+          <strong>{{ event.next_session|date:"d" }}</strong>
+        </div>
+        <div class="training-main">
+          <div class="training-title-line">
+            <h3>{{ event.course.name }}</h3>
+            <span class="status {{ event.status }}">{{ event.get_status_display }}</span>
+            {% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}
+          </div>
+          <p>{{ event.course.code }} · {{ event.host_organization.short_name }} · {{ event.location_name }}</p>
+          <div class="training-meta">
+            <span>{{ event.next_session|date:"D, M j · g:i A" }}</span>
+            <span>{{ event.instructor_count }} instructor{{ event.instructor_count|pluralize }} assigned</span>
+          </div>
+        </div>
+        <div class="staffing-state {% if event.staffing_gap %}needs-help{% endif %}">
+          {% if event.staffing_gap %}
+            <strong>{{ event.staffing_gap }}</strong><span>still needed</span>
+          {% else %}
+            <strong>Ready</strong><span>staffed</span>
+          {% endif %}
+        </div>
+      </a>
+      {% empty %}
+      <div class="empty-state">
+        <strong>No upcoming training yet</strong>
+        <p>Proposed and confirmed courses will appear here.</p>
+      </div>
+      {% endfor %}
+    </div>
+    <a class="panel-link" href="{% url 'schedule' %}">Open full regional schedule <span aria-hidden="true">→</span></a>
+  </div>
+
+  <aside class="panel awareness-panel">
+    <div class="panel-header compact">
+      <div><p class="eyebrow">Quick heads-up</p><h2>Other classes running</h2></div>
+    </div>
+    <p class="panel-intro">Nearby dates are informational. Only an instructor double-booking creates a hard conflict.</p>
+    <div class="awareness-list">
+      {% for event in upcoming|slice:":4" %}
+      <div class="awareness-item">
+        <span class="county-dot org-{{ event.host_organization.id }}"></span>
+        <div><strong>{{ event.host_organization.short_name }}</strong><span>{{ event.course.name }}</span></div>
+        <time>{{ event.next_session|date:"M j" }}</time>
+      </div>
+      {% empty %}
+      <div class="empty-state small">No overlapping activity to show.</div>
+      {% endfor %}
+    </div>
+    <div class="notice-card">
+      <span class="notice-icon" aria-hidden="true">i</span>
+      <p><strong>Simple by design</strong> Course overlap is a heads-up, not a scheduling restriction.</p>
+    </div>
+  </aside>
+</section>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ event.course.name }} · NYS Fire{% endblock %}
+{% block page_title %}{{ event.course.name }}{% endblock %}
+
+{% block content %}
+<section class="detail-hero">
+  <div>
+    <div class="detail-badges"><span class="course-code">{{ event.course.code }}</span><span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div>
+    <p>{{ event.host_organization.name }} · {{ event.location_name }}</p>
+  </div>
+  <div class="toolbar-actions">
+    {% if event.acadis_registration_url %}<a class="button secondary" href="{{ event.acadis_registration_url }}" target="_blank" rel="noopener">Open Acadis registration ↗</a>{% endif %}
+    {% if can_manage %}<a class="button primary" href="{% url 'training_edit' event.pk %}">Edit training</a>{% endif %}
+  </div>
+</section>
+
+<section class="detail-grid">
+  <div class="detail-main">
+    {% for row in session_rows %}
+    <article class="panel session-card">
+      <div class="panel-header"><div><p class="eyebrow">Training session</p><h2>{{ row.session.starts_at|date:"l, F j, Y" }}</h2></div><strong class="session-time">{{ row.session.starts_at|date:"g:i A" }}–{{ row.session.ends_at|date:"g:i A" }}</strong></div>
+      <div class="session-section">
+        <h3>Assigned instructors</h3>
+        <div class="chip-list">
+          {% for assignment in row.assignments %}<span class="person-chip"><i class="avatar tiny">{{ assignment.instructor.first_name|first }}{{ assignment.instructor.last_name|first }}</i><span><strong>{{ assignment.instructor.full_name }}</strong><small>{{ assignment.get_role_display }} · {{ assignment.instructor.home_organization.short_name }}</small></span></span>{% empty %}<span class="muted">No instructors assigned.</span>{% endfor %}
+        </div>
+      </div>
+      <div class="session-section eligible-section">
+        <div><h3>Qualified and currently available</h3><p>Filtered by course authorization, availability, existing assignments, and travel preference.</p></div>
+        <div class="candidate-list">
+          {% for instructor in row.eligible_assistants %}<span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %} · Regional{% endif %}</small></span>{% empty %}<span class="muted">No eligible instructors found.</span>{% endfor %}
+        </div>
+      </div>
+    </article>
+    {% empty %}<div class="empty-state panel">No sessions are scheduled.</div>{% endfor %}
+  </div>
+  <aside class="panel detail-aside">
+    <p class="eyebrow">Course staffing</p>
+    <h2>{{ event.course.recommended_instructors }} recommended</h2>
+    <dl class="detail-list">
+      <div><dt>Minimum instructors</dt><dd>{{ event.course.minimum_instructors }}</dd></div>
+      <div><dt>Recommended instructors</dt><dd>{{ event.course.recommended_instructors }}</dd></div>
+      <div><dt>Host</dt><dd>{{ event.host_organization.short_name }}</dd></div>
+      <div><dt>Location</dt><dd>{{ event.location_name }}</dd></div>
+      {% if event.contact_name %}<div><dt>Course contact</dt><dd>{{ event.contact_name }}</dd></div>{% endif %}
+    </dl>
+    <div class="notice-card"><span class="notice-icon">i</span><p><strong>Regional heads-up</strong>Other courses on nearby dates are informational. Only instructor double-booking is a hard conflict.</p></div>
+  </aside>
+</section>
+{% endblock %}

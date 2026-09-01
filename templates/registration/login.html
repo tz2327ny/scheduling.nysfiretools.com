@@ -1,0 +1,12 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYS Fire Training Scheduler</title><link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="brand dark"><span class="brand-mark">NY</span><div><strong>NYS Fire</strong><span>Training Scheduler</span></div></div>
+    <div class="login-copy"><p class="eyebrow">Authorized access</p><h1>Welcome back</h1><p>Sign in to coordinate courses and authorized instructors.</p></div>
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Sign in</button></form>
+  </main>
+</body>
+</html>

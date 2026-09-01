@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_heading }} · NYS Fire{% endblock %}
+{% block page_title %}{{ page_heading }}{% endblock %}
+
+{% block content %}
+<form class="form-shell" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Course offering</p><h2>Training details</h2></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}
+      <label class="field {% if field.name == 'notes' or field.name == 'acadis_registration_url' %}wide{% endif %}">
+        <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+      </label>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Dates and times</p><h2>Training sessions</h2></div></div>
+    {{ formset.management_form }}
+    {% for session_form in formset %}
+    <div class="session-form">
+      {% for hidden in session_form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% for field in session_form.visible_fields %}
+      <label class="field"><span>{{ field.label }}</span>{{ field }}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'schedule' %}">Cancel</a><button class="button primary" type="submit">Save training</button></div>
+</form>
+{% endblock %}
