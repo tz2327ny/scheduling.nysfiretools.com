@@ -17,6 +17,6 @@
       {% endfor %}
     </div>
   </section>
-  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a><button class="button primary" type="submit">Save user access</button></div>
+  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a><a class="button secondary" href="{% url 'user_password_reset' managed_user.pk %}">Reset password</a><button class="button primary" type="submit">Save user access</button></div>
 </form>
 {% endblock %}

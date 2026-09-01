@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core import mail
+from django.db import IntegrityError, transaction
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
@@ -80,6 +82,35 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "An account already exists for this email address.")
         self.assertFalse(InstructorApplication.objects.exists())
+
+    def test_database_rejects_case_insensitive_duplicate_email(self):
+        User.objects.create_user(
+            username="unique-one@example.com",
+            email="Unique.Email@example.com",
+            password=self.password,
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(
+                username="unique-two@example.com",
+                email="unique.email@EXAMPLE.COM",
+                password=self.password,
+            )
+
+    def test_email_sign_in_is_case_insensitive(self):
+        user = User.objects.create_user(
+            username="case.login@example.com",
+            email="case.login@example.com",
+            password=self.password,
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "CASE.LOGIN@EXAMPLE.COM", "password": self.password},
+        )
+
+        self.assertRedirects(response, reverse("dashboard"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
 
     def test_state_admin_reviews_application_and_approves_selected_course_claims(self):
         application = self.create_pending_application()
@@ -224,6 +255,57 @@ class InstructorAccountWorkflowTests(TestCase):
                 role=UserOrganizationRole.Role.ADMINISTRATOR,
             ).exists()
         )
+
+    def test_state_admin_can_reset_user_password(self):
+        managed_user = User.objects.create_user(
+            username="reset.user@example.com",
+            email="reset.user@example.com",
+            password=self.password,
+        )
+        self.client.force_login(self.state_admin)
+        new_password = "NewSecureAccess!45678"
+
+        response = self.client.post(
+            reverse("user_password_reset", args=[managed_user.pk]),
+            {"new_password1": new_password, "new_password2": new_password},
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        managed_user.refresh_from_db()
+        self.assertTrue(managed_user.check_password(new_password))
+
+    def test_non_state_admin_cannot_reset_user_password(self):
+        county_admin = User.objects.create_user(
+            username="reset.county@example.com",
+            email="reset.county@example.com",
+            password=self.password,
+        )
+        self.client.force_login(county_admin)
+
+        response = self.client.get(
+            reverse("user_password_reset", args=[self.state_admin.pk])
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_user_can_request_password_reset_email(self):
+        User.objects.create_user(
+            username="forgot.password@example.com",
+            email="forgot.password@example.com",
+            password=self.password,
+            is_active=True,
+        )
+
+        response = self.client.post(
+            reverse("password_reset"),
+            {"email": "forgot.password@example.com"},
+        )
+
+        self.assertRedirects(response, reverse("password_reset_done"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["forgot.password@example.com"])
+        self.assertIn("/accounts/reset/", mail.outbox[0].body)
 
     def test_state_admin_cannot_disable_or_demote_their_own_account(self):
         self.client.force_login(self.state_admin)

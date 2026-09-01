@@ -8,6 +8,11 @@ urlpatterns = [
     path("register/received/", views.registration_received, name="registration_received"),
     path("users/", views.user_list, name="user_list"),
     path("users/<int:pk>/edit/", views.user_edit, name="user_edit"),
+    path(
+        "users/<int:pk>/password/",
+        views.user_password_reset,
+        name="user_password_reset",
+    ),
     path("applications/<int:pk>/review/", views.application_review, name="application_review"),
     path("applications/<int:pk>/reject/", views.application_reject, name="application_reject"),
     path("authorizations/<int:pk>/approve/", views.authorization_approve, name="authorization_approve"),

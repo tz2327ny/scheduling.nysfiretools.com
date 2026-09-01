@@ -7,6 +7,7 @@
     <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYS Fire</strong><span>Training Scheduler</span></div></div>
     <div class="login-copy"><p class="eyebrow">Authorized access</p><h1>Welcome back</h1><p>Sign in with your approved email address.</p></div>
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Sign in</button></form>
+    <p class="login-alternate"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
     <p class="login-alternate">State instructor without an account? <a href="{% url 'instructor_register' %}">Request access</a></p>
   </main>
 </body>

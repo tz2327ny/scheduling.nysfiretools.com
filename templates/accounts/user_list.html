@@ -52,7 +52,7 @@
       <span>{% if account.is_superuser %}State administrator{% elif account.instructor_profile %}Instructor{% elif account.organization_roles.all %}Organization administrator{% else %}User{% endif %}</span>
       <span>{% if account.instructor_profile %}{{ account.instructor_profile.home_organization.short_name }}{% else %}{% for role in account.organization_roles.all %}{{ role.organization.short_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}{% endif %}</span>
       <span>{% if account.instructor_application.status == 'pending' %}<i class="status tentative">Pending</i>{% elif account.instructor_application.status == 'rejected' %}<i class="status unavailable">Not approved</i>{% elif account.is_active %}<i class="status available">Enabled</i>{% else %}<i class="status inactive">Disabled</i>{% endif %}</span>
-      <span><a class="text-link" href="{% url 'user_edit' account.pk %}">Manage</a></span>
+      <span class="table-actions"><a class="text-link" href="{% url 'user_edit' account.pk %}">Manage</a><a class="text-link" href="{% url 'user_password_reset' account.pk %}">Reset password</a></span>
     </div>
     {% empty %}<div class="empty-state">No user accounts found.</div>{% endfor %}
   </div>

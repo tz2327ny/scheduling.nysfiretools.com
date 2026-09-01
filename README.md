@@ -11,6 +11,8 @@ A standalone course and instructor coordination system for Jefferson, Lewis, St.
 - Instructor self-registration with State Admin account approval
 - Instructor-submitted course authorization claims with State verification
 - Statewide user management and county/organization administrator assignments
+- Case-insensitive unique account emails and duplicate-account consolidation
+- Self-service password recovery and State administrator password resets
 - Instructor travel preferences
 - Instructor-entered preferred, tentative, and unavailable time windows
 - Monday–Sunday availability view with visible daily time windows
@@ -44,6 +46,7 @@ Create a Railway project with an application service and PostgreSQL service. Con
 - `ALLOWED_HOSTS=scheduling.nysfiretools.com,<railway-generated-host>`
 - `CSRF_TRUSTED_ORIGINS=https://scheduling.nysfiretools.com,https://<railway-generated-host>`
 - `DATABASE_URL` as a reference to the Railway PostgreSQL service
+- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` for password-reset email delivery
 
 The included Dockerfile runs migrations and starts Gunicorn. The Railway health check uses `/health/`.
 

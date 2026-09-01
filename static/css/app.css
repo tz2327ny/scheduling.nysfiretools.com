@@ -307,6 +307,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .assignment-form label span { display: block; margin-bottom: 5px; color: var(--slate-600); font-size: 8px; font-weight: 700; }
 .hidden-field { display: none; }
 .icon-button { border: 0; background: transparent; color: var(--slate-400); cursor: pointer; font-size: 17px; }
+.table-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; }
 .warning-card { margin: 0 0 16px; border-color: #fed7aa; background: #fff7ed; }
 .unit-table-wrap { overflow-x: auto; padding: 0 20px 20px; }
 .unit-table { width: 100%; border-collapse: collapse; }

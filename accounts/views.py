@@ -1,16 +1,22 @@
 from functools import wraps
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from scheduling.models import CourseAuthorization, Instructor
 
-from .forms import InstructorApplicationReviewForm, InstructorRegistrationForm, StateUserForm
+from .forms import (
+    InstructorApplicationReviewForm,
+    InstructorRegistrationForm,
+    StatePasswordResetForm,
+    StateUserForm,
+)
 from .models import InstructorApplication
 
 
@@ -30,17 +36,21 @@ def instructor_register(request):
         return redirect("dashboard")
     form = InstructorRegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
-            user = form.save()
-            application = InstructorApplication.objects.create(
-                user=user,
-                phone=form.cleaned_data["phone"],
-                home_organization=form.cleaned_data["home_organization"],
-                travel_preference=form.cleaned_data["travel_preference"],
-                travel_notes=form.cleaned_data["travel_notes"],
-            )
-            application.requested_courses.set(form.cleaned_data["requested_courses"])
-        return redirect("registration_received")
+        try:
+            with transaction.atomic():
+                user = form.save()
+                application = InstructorApplication.objects.create(
+                    user=user,
+                    phone=form.cleaned_data["phone"],
+                    home_organization=form.cleaned_data["home_organization"],
+                    travel_preference=form.cleaned_data["travel_preference"],
+                    travel_notes=form.cleaned_data["travel_notes"],
+                )
+                application.requested_courses.set(form.cleaned_data["requested_courses"])
+        except IntegrityError:
+            form.add_error("email", "An account already exists for this email address.")
+        else:
+            return redirect("registration_received")
     return render(request, "registration/register.html", {"form": form})
 
 
@@ -86,6 +96,26 @@ def user_edit(request, pk):
         messages.success(request, "User access was updated.")
         return redirect("user_list")
     return render(request, "accounts/user_form.html", {"form": form, "managed_user": user})
+
+
+@state_admin_required
+def user_password_reset(request, pk):
+    user = get_object_or_404(request.user.__class__, pk=pk)
+    form = StatePasswordResetForm(user, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        if user == request.user:
+            update_session_auth_hash(request, user)
+        messages.success(
+            request,
+            f"Password was reset for {user.get_full_name() or user.email}.",
+        )
+        return redirect("user_list")
+    return render(
+        request,
+        "accounts/user_password_reset.html",
+        {"form": form, "managed_user": user},
+    )
 
 
 @state_admin_required

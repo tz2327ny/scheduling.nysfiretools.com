@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, SetPasswordForm, UserCreationForm
 from django.db.models import Q
 
 from scheduling.models import Course, Instructor, Organization
@@ -13,6 +13,9 @@ User = get_user_model()
 
 class EmailAuthenticationForm(AuthenticationForm):
     username = forms.EmailField(label="Email address", widget=forms.EmailInput(attrs={"autofocus": True}))
+
+    def clean_username(self):
+        return User.objects.normalize_email(self.cleaned_data["username"]).strip().lower()
 
 
 class InstructorRegistrationForm(UserCreationForm):
@@ -177,3 +180,18 @@ class StateUserForm(forms.ModelForm):
             ]
         )
         return user
+
+
+class StatePasswordResetForm(SetPasswordForm):
+    """Allows a State administrator to set a new password for an account."""
+
+    new_password1 = forms.CharField(
+        label="New password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
+    new_password2 = forms.CharField(
+        label="Confirm new password",
+        strip=False,
+        widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+    )
