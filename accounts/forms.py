@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm, SetPasswordForm, UserCreationForm
 from django.db.models import Q
 
-from scheduling.models import Course, Instructor, Organization
+from scheduling.models import Course, CourseAuthorization, Instructor, Organization
+from scheduling.services import sync_verified_course_authorizations
 
 from .models import UserOrganizationRole
 
@@ -213,6 +214,13 @@ class StateUserForm(forms.ModelForm):
         required=False,
         help_text="Optional. Leave blank for an administrator-only account. Clearing an existing link deactivates that instructor profile but preserves its staffing history.",
     )
+    verified_courses = forms.ModelMultipleChoiceField(
+        label="Verified course authorizations",
+        queryset=Course.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select the courses this linked instructor is currently authorized to teach.",
+    )
 
     class Meta:
         model = User
@@ -229,6 +237,9 @@ class StateUserForm(forms.ModelForm):
         self.acting_user = acting_user
         super().__init__(*args, **kwargs)
         self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
+        self.fields["verified_courses"].queryset = Course.objects.filter(
+            active=True
+        ).order_by("name", "record_number")
         if self.instance.pk:
             self.fields["organization_admins"].initial = Organization.objects.filter(
                 user_roles__user=self.instance,
@@ -237,6 +248,13 @@ class StateUserForm(forms.ModelForm):
             self.fields["instructor_profile"].initial = getattr(
                 self.instance, "instructor_profile", None
             )
+            instructor = getattr(self.instance, "instructor_profile", None)
+            if instructor:
+                self.fields["verified_courses"].initial = (
+                    instructor.course_authorizations.filter(
+                        status=CourseAuthorization.Status.ACTIVE
+                    ).values_list("course_id", flat=True)
+                )
             self.fields["instructor_profile"].queryset = Instructor.objects.filter(
                 Q(user__isnull=True) | Q(user=self.instance)
             ).select_related("home_organization")
@@ -260,6 +278,11 @@ class StateUserForm(forms.ModelForm):
         application = getattr(self.instance, "instructor_application", None)
         if application and application.status != application.Status.APPROVED and cleaned.get("is_active"):
             self.add_error("is_active", "Approve this instructor application before enabling the account.")
+        if cleaned.get("verified_courses") and not cleaned.get("instructor_profile"):
+            self.add_error(
+                "verified_courses",
+                "Link an instructor directory profile before assigning course authorizations.",
+            )
         return cleaned
 
     def save_with_roles(self):
@@ -281,6 +304,11 @@ class StateUserForm(forms.ModelForm):
             selected_instructor.active = True
             selected_instructor.save(
                 update_fields=("user", "first_name", "last_name", "email", "active")
+            )
+            sync_verified_course_authorizations(
+                selected_instructor,
+                self.cleaned_data["verified_courses"],
+                self.acting_user,
             )
         UserOrganizationRole.objects.filter(
             user=user,
@@ -319,14 +347,25 @@ class StateUserCreateForm(UserCreationForm):
         required=False,
         help_text="Optional. Link an instructor already added to the scheduling directory, or leave blank for an administrator-only account.",
     )
+    verified_courses = forms.ModelMultipleChoiceField(
+        label="Verified course authorizations",
+        queryset=Course.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Select the courses this linked instructor is currently authorized to teach.",
+    )
 
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ("first_name", "last_name", "email")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, acting_user=None, **kwargs):
+        self.acting_user = acting_user
         super().__init__(*args, **kwargs)
         self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
+        self.fields["verified_courses"].queryset = Course.objects.filter(
+            active=True
+        ).order_by("name", "record_number")
         self.fields["instructor_profile"].queryset = Instructor.objects.filter(
             user__isnull=True
         ).select_related("home_organization")
@@ -343,6 +382,7 @@ class StateUserCreateForm(UserCreationForm):
                 "is_superuser",
                 "organization_admins",
                 "instructor_profile",
+                "verified_courses",
             ]
         )
 
@@ -351,6 +391,15 @@ class StateUserCreateForm(UserCreationForm):
         if User.objects.filter(Q(username__iexact=email) | Q(email__iexact=email)).exists():
             raise forms.ValidationError("An account already exists for this email address.")
         return email
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("verified_courses") and not cleaned.get("instructor_profile"):
+            self.add_error(
+                "verified_courses",
+                "Link an instructor directory profile before assigning course authorizations.",
+            )
+        return cleaned
 
     def save_with_roles(self):
         user = super().save(commit=False)
@@ -369,6 +418,11 @@ class StateUserCreateForm(UserCreationForm):
             selected_instructor.active = True
             selected_instructor.save(
                 update_fields=("user", "first_name", "last_name", "email", "active")
+            )
+            sync_verified_course_authorizations(
+                selected_instructor,
+                self.cleaned_data["verified_courses"],
+                self.acting_user,
             )
         UserOrganizationRole.objects.bulk_create(
             [

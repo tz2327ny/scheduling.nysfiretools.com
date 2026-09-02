@@ -527,13 +527,20 @@ def instructor_create(request):
     if not organizations.exists():
         raise PermissionDenied("No managed organization is assigned to this account.")
     if request.method == "POST":
-        form = InstructorForm(request.POST, managed_organizations=organizations)
+        form = InstructorForm(
+            request.POST,
+            managed_organizations=organizations,
+            authorization_verifier=request.user if request.user.is_superuser else None,
+        )
         if form.is_valid():
             instructor = form.save()
             messages.success(request, "Instructor was created.")
             return redirect("instructor_list")
     else:
-        form = InstructorForm(managed_organizations=organizations)
+        form = InstructorForm(
+            managed_organizations=organizations,
+            authorization_verifier=request.user if request.user.is_superuser else None,
+        )
     return render(
         request,
         "scheduling/instructor_form.html",
@@ -551,13 +558,18 @@ def instructor_edit(request, pk):
             request.POST,
             instance=instructor,
             managed_organizations=organizations,
+            authorization_verifier=request.user if request.user.is_superuser else None,
         )
         if form.is_valid():
             form.save()
             messages.success(request, "Instructor was updated.")
             return redirect("instructor_list")
     else:
-        form = InstructorForm(instance=instructor, managed_organizations=organizations)
+        form = InstructorForm(
+            instance=instructor,
+            managed_organizations=organizations,
+            authorization_verifier=request.user if request.user.is_superuser else None,
+        )
     return render(
         request,
         "scheduling/instructor_form.html",

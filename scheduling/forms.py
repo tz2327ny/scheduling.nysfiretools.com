@@ -276,6 +276,17 @@ class InstructorAssignmentForm(forms.ModelForm):
 
 
 class InstructorForm(forms.ModelForm):
+    verified_courses = forms.ModelMultipleChoiceField(
+        label="Verified course authorizations",
+        queryset=Course.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text=(
+            "Select every course this instructor is currently authorized to teach. "
+            "Selections are immediately available for staffing assignments."
+        ),
+    )
+
     class Meta:
         model = Instructor
         fields = (
@@ -290,10 +301,41 @@ class InstructorForm(forms.ModelForm):
             "active",
         )
 
-    def __init__(self, *args, managed_organizations=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        managed_organizations=None,
+        authorization_verifier=None,
+        **kwargs,
+    ):
+        self.authorization_verifier = authorization_verifier
         super().__init__(*args, **kwargs)
         if managed_organizations is not None:
             self.fields["home_organization"].queryset = managed_organizations
+        if authorization_verifier is None:
+            self.fields.pop("verified_courses")
+        else:
+            self.fields["verified_courses"].queryset = Course.objects.filter(
+                active=True
+            ).order_by("name", "record_number")
+            if self.instance.pk:
+                self.fields["verified_courses"].initial = (
+                    self.instance.course_authorizations.filter(
+                        status=CourseAuthorization.Status.ACTIVE
+                    ).values_list("course_id", flat=True)
+                )
+
+    def save(self, commit=True):
+        instructor = super().save(commit=commit)
+        if commit and self.authorization_verifier is not None:
+            from .services import sync_verified_course_authorizations
+
+            sync_verified_course_authorizations(
+                instructor,
+                self.cleaned_data["verified_courses"],
+                self.authorization_verifier,
+            )
+        return instructor
 
 
 class InstructorAuthorizationRequestForm(forms.Form):

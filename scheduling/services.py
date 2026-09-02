@@ -96,3 +96,43 @@ def eligible_instructors_for_session(session, role):
         )
         .order_by("availability_rank", "last_name", "first_name")
     )
+
+
+def sync_verified_course_authorizations(instructor, courses, verified_by):
+    """Replace an instructor's active course authorizations with a verified selection."""
+
+    selected_courses = list(courses)
+    selected_ids = {course.pk for course in selected_courses}
+    verified_at = timezone.now()
+
+    instructor.course_authorizations.filter(
+        status=CourseAuthorization.Status.ACTIVE,
+    ).exclude(course_id__in=selected_ids).update(
+        status=CourseAuthorization.Status.SUSPENDED,
+        verified_by=verified_by,
+        verified_at=verified_at,
+    )
+
+    for course in selected_courses:
+        authorization, created = CourseAuthorization.objects.get_or_create(
+            instructor=instructor,
+            course=course,
+            defaults={
+                "status": CourseAuthorization.Status.ACTIVE,
+                "can_lead": True,
+                "can_assist": True,
+                "verified_by": verified_by,
+                "verified_at": verified_at,
+            },
+        )
+        if created:
+            continue
+        update_fields = ["status", "verified_by", "verified_at"]
+        if authorization.status != CourseAuthorization.Status.ACTIVE:
+            authorization.effective_date = None
+            authorization.expiration_date = None
+            update_fields.extend(("effective_date", "expiration_date"))
+        authorization.status = CourseAuthorization.Status.ACTIVE
+        authorization.verified_by = verified_by
+        authorization.verified_at = verified_at
+        authorization.save(update_fields=update_fields)

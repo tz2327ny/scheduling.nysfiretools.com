@@ -136,7 +136,7 @@ def user_list(request):
 
 @state_admin_required
 def user_create(request):
-    form = StateUserCreateForm(request.POST or None)
+    form = StateUserCreateForm(request.POST or None, acting_user=request.user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             user = form.save_with_roles()

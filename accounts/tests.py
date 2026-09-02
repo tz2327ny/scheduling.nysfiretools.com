@@ -459,6 +459,65 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertTrue(created.is_active)
         self.assertFalse(Instructor.objects.filter(user=created).exists())
 
+    def test_site_admin_can_assign_authorizations_when_linking_login(self):
+        instructor = Instructor.objects.create(
+            first_name="Schedule",
+            last_name="Only",
+            email="schedule.only@example.com",
+            home_organization=self.jefferson,
+        )
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("user_create"),
+            {
+                "first_name": "Schedule",
+                "last_name": "Only",
+                "email": "schedule.only@example.com",
+                "password1": self.password,
+                "password2": self.password,
+                "is_active": "on",
+                "instructor_profile": instructor.pk,
+                "verified_courses": [self.course.pk, self.second_course.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        instructor.refresh_from_db()
+        self.assertIsNotNone(instructor.user_id)
+        authorizations = instructor.course_authorizations.filter(
+            status=CourseAuthorization.Status.ACTIVE
+        )
+        self.assertEqual(
+            set(authorizations.values_list("course_id", flat=True)),
+            {self.course.pk, self.second_course.pk},
+        )
+        self.assertFalse(authorizations.exclude(verified_by=self.state_admin).exists())
+
+    def test_site_admin_cannot_assign_authorizations_without_instructor_profile(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("user_create"),
+            {
+                "first_name": "Admin",
+                "last_name": "Only",
+                "email": "admin.only@example.com",
+                "password1": self.password,
+                "password2": self.password,
+                "is_active": "on",
+                "verified_courses": [self.course.pk],
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "verified_courses",
+            "Link an instructor directory profile before assigning course authorizations.",
+        )
+        self.assertFalse(User.objects.filter(email="admin.only@example.com").exists())
+
     def test_state_admin_can_reset_user_password(self):
         managed_user = User.objects.create_user(
             username="reset.user@example.com",

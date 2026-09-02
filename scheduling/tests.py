@@ -381,6 +381,70 @@ class CountyPermissionTests(SchedulingTestCase):
         self.assertEqual(instructor.sfi_number, "")
         self.assertIsNone(instructor.user_id)
 
+    @override_settings(DEBUG=False)
+    def test_site_admin_can_create_scheduling_only_instructor_with_authorization(self):
+        site_admin = get_user_model().objects.create_superuser(
+            username="site.admin@example.com",
+            email="site.admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(site_admin)
+
+        response = self.client.post(
+            reverse("instructor_create"),
+            {
+                "first_name": "Qualified",
+                "last_name": "Instructor",
+                "sfi_number": "SFI-2048",
+                "email": "qualified@example.com",
+                "phone": "",
+                "home_organization": self.jefferson.pk,
+                "travel_preference": Instructor.TravelPreference.CONTACT_ME,
+                "travel_notes": "",
+                "active": "on",
+                "verified_courses": [self.course.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("instructor_list"))
+        instructor = Instructor.objects.get(email="qualified@example.com")
+        authorization = CourseAuthorization.objects.get(
+            instructor=instructor,
+            course=self.course,
+        )
+        self.assertEqual(authorization.status, CourseAuthorization.Status.ACTIVE)
+        self.assertEqual(authorization.verified_by, site_admin)
+        self.assertIsNotNone(authorization.verified_at)
+        self.assertIn(
+            instructor,
+            eligible_instructors_for_session(
+                self.session,
+                InstructorAssignment.Role.ASSISTANT,
+            ),
+        )
+
+    @override_settings(DEBUG=False)
+    def test_county_admin_cannot_self_verify_course_authorizations(self):
+        response = self.client.post(
+            reverse("instructor_create"),
+            {
+                "first_name": "County",
+                "last_name": "Created",
+                "sfi_number": "SFI-4096",
+                "email": "county.created@example.com",
+                "phone": "",
+                "home_organization": self.jefferson.pk,
+                "travel_preference": Instructor.TravelPreference.CONTACT_ME,
+                "travel_notes": "",
+                "active": "on",
+                "verified_courses": [self.course.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("instructor_list"))
+        instructor = Instructor.objects.get(email="county.created@example.com")
+        self.assertFalse(instructor.course_authorizations.exists())
+
 
 class AuthenticationTests(TestCase):
     @override_settings(DEBUG=False)

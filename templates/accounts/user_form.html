@@ -11,12 +11,23 @@
     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
     <div class="form-grid">
       {% for field in form %}
+      {% if field.name == 'verified_courses' %}
+      <div class="field wide course-selector" data-course-selector>
+        <span>{{ field.label }}</span>
+        <input class="course-search" type="search" placeholder="Search by course name or record number" aria-label="Search verified course authorizations" data-course-search>
+        <div class="course-choice-list">{{ field }}</div>
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
+      </div>
+      {% else %}
       <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% elif field.name == 'instructor_profile' %}wide{% endif %}">
         <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
       </label>
+      {% endif %}
       {% endfor %}
     </div>
   </section>
   <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a>{% if not is_create %}<a class="button secondary" href="{% url 'user_password_reset' managed_user.pk %}">Reset password</a>{% endif %}<button class="button primary" type="submit">{% if is_create %}Create account{% else %}Save user access{% endif %}</button></div>
 </form>
 {% endblock %}
+
+{% block extra_scripts %}<script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>{% endblock %}
