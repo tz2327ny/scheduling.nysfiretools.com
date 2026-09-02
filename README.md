@@ -2,7 +2,7 @@
 
 An independent course and instructor coordination system for participating New York State counties and instructors assigned to the New York State Academy of Fire Science.
 
-This is an informal NYSFIRETOOLS project. It is not an official New York State or State Fire system and has not been formally approved or endorsed. Beta testing is proceeding with informal support from a Division Chief.
+This is an independent NYSFIRETOOLS beta project. It is not an official New York State or State Fire system and has not been formally approved or endorsed.
 
 ## Current product slice
 

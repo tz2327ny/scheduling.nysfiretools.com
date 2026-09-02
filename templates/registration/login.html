@@ -9,7 +9,7 @@
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Sign in</button></form>
     <p class="login-alternate"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
     <p class="login-alternate">Instructor without an account? <a href="{% url 'instructor_register' %}">Request access</a></p>
-    <p class="independence-note"><strong>Independent tool:</strong> This is not an official New York State or State Fire system and has not been formally approved or endorsed. Beta testing is proceeding with informal support from a Division Chief.</p>
+    <p class="independence-note"><strong>Independent tool:</strong> This is not an official New York State or State Fire system and has not been formally approved or endorsed.</p>
   </main>
 </body>
 </html>
