@@ -103,7 +103,7 @@ def notify_assignment(assignment, removed=False):
         if removed
         else NotificationDelivery.Kind.ASSIGNMENT
     )
-    subject = f"NYS Fire: {'Assignment removed' if removed else 'New instructor assignment'}"
+    subject = f"NYSFIRETOOLS: {'Assignment removed' if removed else 'New instructor assignment'}"
     body = (
         f"Hello {assignment.instructor.first_name},\n\n"
         f"You were {action} {event.course.name}.\n"
@@ -111,7 +111,7 @@ def notify_assignment(assignment, removed=False):
         f"Role: {assignment.get_role_display()}\n"
         f"Location: {assignment.session.location_override or event.location_name}\n\n"
         f"View training: {_event_url(event)}\n\n"
-        "NYS Fire Training Scheduler"
+        "NYSFIRETOOLS Fire Training Scheduler"
     )
     return queue_instructor_notification(
         assignment.instructor,
@@ -130,9 +130,9 @@ def notify_event_update(event):
         else NotificationDelivery.Kind.SCHEDULE_UPDATE
     )
     subject = (
-        f"NYS Fire: {event.course.name} cancelled"
+        f"NYSFIRETOOLS: {event.course.name} cancelled"
         if kind == NotificationDelivery.Kind.CANCELLATION
-        else f"NYS Fire: {event.course.name} schedule updated"
+        else f"NYSFIRETOOLS: {event.course.name} schedule updated"
     )
     body = (
         f"The training details for {event.course.name} have changed.\n"
@@ -140,7 +140,7 @@ def notify_event_update(event):
         f"Host: {event.host_organization.name}\n"
         f"Location: {event.location_name}\n\n"
         f"Review the current unit schedule: {_event_url(event)}\n\n"
-        "NYS Fire Training Scheduler"
+        "NYSFIRETOOLS Fire Training Scheduler"
     )
     instructors = {
         assignment.instructor_id: assignment.instructor
@@ -162,13 +162,13 @@ def notify_event_update(event):
 
 
 def notify_account_approved(instructor):
-    subject = "Your NYS Fire Training Scheduler account was approved"
+    subject = "Your NYSFIRETOOLS Fire Training Scheduler account was approved"
     body = (
         f"Hello {instructor.first_name},\n\n"
         "Your instructor account has been approved. You can now sign in and manage "
         "your availability and notification preferences.\n\n"
         f"Sign in: {settings.SITE_BASE_URL.rstrip('/')}{reverse('login')}\n\n"
-        "NYS Fire Training Scheduler"
+        "NYSFIRETOOLS Fire Training Scheduler"
     )
     return queue_instructor_notification(
         instructor,
@@ -179,12 +179,12 @@ def notify_account_approved(instructor):
 
 
 def notify_authorization_approved(authorization):
-    subject = f"NYS Fire: {authorization.course.name} authorization approved"
+    subject = f"NYSFIRETOOLS: {authorization.course.name} authorization approved"
     body = (
         f"Hello {authorization.instructor.first_name},\n\n"
         f"Your authorization to teach {authorization.course.name} "
         f"({authorization.course.record_number}) was approved.\n\n"
-        "NYS Fire Training Scheduler"
+        "NYSFIRETOOLS Fire Training Scheduler"
     )
     return queue_instructor_notification(
         authorization.instructor,

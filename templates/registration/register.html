@@ -1,10 +1,10 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Instructor registration · NYS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Instructor registration · NYSFIRETOOLS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
 <body class="login-page">
   <main class="login-card registration-card">
-    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYS Fire</strong><span>Training Scheduler</span></div></div>
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Fire Training Scheduler</span></div></div>
     <div class="login-copy"><p class="eyebrow">Instructor access request</p><h1>Create an instructor account</h1><p>Your SFI number is required. Your account will remain inactive until a Site Administrator reviews your identity and course authorizations.</p></div>
     <form method="post" novalidate>
       {% csrf_token %}
@@ -25,9 +25,10 @@
         {% endif %}
         {% endfor %}
       </div>
-      <button class="button primary" type="submit">Submit for State approval</button>
+      <button class="button primary" type="submit">Submit access request</button>
     </form>
-    <p class="login-alternate">Already approved? <a href="{% url 'login' %}">Sign in</a></p>
+    <p class="login-alternate">Already have access? <a href="{% url 'login' %}">Sign in</a></p>
+    <p class="independence-note"><strong>Independent tool:</strong> This is not an official New York State or State Fire system and has not been formally approved or endorsed. Beta testing is proceeding with informal support from a Division Chief.</p>
   </main>
   <script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>
 </body>

@@ -1,6 +1,8 @@
-# NYS Fire Training Scheduler
+# NYSFIRETOOLS Fire Training Scheduler
 
-A standalone, statewide-ready course and instructor coordination system for participating New York State counties and instructors assigned to the New York State Academy of Fire Science.
+An independent course and instructor coordination system for participating New York State counties and instructors assigned to the New York State Academy of Fire Science.
+
+This is an informal NYSFIRETOOLS project. It is not an official New York State or State Fire system and has not been formally approved or endorsed. Beta testing is proceeding with informal support from a Division Chief.
 
 ## Current product slice
 

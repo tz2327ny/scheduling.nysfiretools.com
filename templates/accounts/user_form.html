@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if is_create %}Create login account{% else %}Manage {{ managed_user.email|default:managed_user.username }}{% endif %} · NYS Fire{% endblock %}
+{% block title %}{% if is_create %}Create login account{% else %}Manage {{ managed_user.email|default:managed_user.username }}{% endif %} · NYSFIRETOOLS{% endblock %}
 {% block page_title %}{% if is_create %}Create login account{% else %}Manage user{% endif %}{% endblock %}
 
 {% block content %}

@@ -4,8 +4,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Coordinate State Fire courses, unit staffing, and authorized instructors statewide.">
-  <title>{% block title %}NYS Fire Training Scheduler{% endblock %}</title>
+  <meta name="description" content="Independent course scheduling, instructor availability, and staffing coordination from NYSFIRETOOLS.">
+  <title>{% block title %}NYSFIRETOOLS Fire Training Scheduler{% endblock %}</title>
   <link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
@@ -15,8 +15,8 @@
       <div class="brand">
         <img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com">
         <div>
-          <strong>NYS Fire</strong>
-          <span>Training Scheduler</span>
+          <strong>NYSFIRETOOLS</strong>
+          <span>Fire Training Scheduler</span>
         </div>
       </div>
       <nav class="nav-list">
@@ -34,12 +34,16 @@
         <a class="nav-item {% if 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'user_list' %}"><span aria-hidden="true">⚙</span> Users</a>
         {% endif %}
       </nav>
+      <div class="sidebar-foot">
+        <strong class="region-label">Independent beta</strong>
+        <p>Not an official New York State or State Fire system. Not formally approved or endorsed.</p>
+      </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div>
-          <p class="eyebrow">State Fire instructor coordination</p>
+          <p class="eyebrow">Independent instructor coordination</p>
           <h1>{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
         <div class="topbar-actions">
