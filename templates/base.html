@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Coordinate State Fire courses and authorized instructors across the region.">
+  <meta name="description" content="Coordinate State Fire courses, unit staffing, and authorized instructors statewide.">
   <title>{% block title %}NYS Fire Training Scheduler{% endblock %}</title>
   <link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -20,27 +20,25 @@
         </div>
       </div>
       <nav class="nav-list">
-        <a class="nav-item active" href="{% url 'dashboard' %}"><span aria-hidden="true">▦</span> Dashboard</a>
-        <a class="nav-item" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
-        <a class="nav-item" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Course library</a>
-        <a class="nav-item" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span aria-hidden="true">▦</span> Dashboard</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'schedule' or 'training_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
+        <a class="nav-item {% if 'course_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Courses</a>
+        <a class="nav-item {% if 'instructor_' in request.resolver_match.url_name or 'availability_' in request.resolver_match.url_name or 'recurring_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
         {% if user.is_authenticated and user.instructor_profile %}
         <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>
         <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
         {% endif %}
-        {% if user.is_superuser %}<a class="nav-item" href="{% url 'user_list' %}"><span aria-hidden="true">⚙</span> User management</a>{% endif %}
-        <a class="nav-item" href="#requests"><span aria-hidden="true">↗</span> Assistance requests</a>
+        {% if user.is_superuser %}
+        <a class="nav-item {% if 'organization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'organization_list' %}"><span aria-hidden="true">⌂</span> Organizations</a>
+        <a class="nav-item {% if 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'user_list' %}"><span aria-hidden="true">⚙</span> Users</a>
+        {% endif %}
       </nav>
-      <div class="sidebar-foot">
-        <div class="region-label">Regional coordination</div>
-        <p>Jefferson · Lewis<br>St. Lawrence · Oswego</p>
-      </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Regional instructor coordination</p>
+          <p class="eyebrow">State Fire instructor coordination</p>
           <h1>{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
         <div class="topbar-actions">

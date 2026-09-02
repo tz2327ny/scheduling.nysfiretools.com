@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_heading }} · NYS Fire{% endblock %}
+{% block page_title %}{{ page_heading }}{% endblock %}
+
+{% block content %}
+<form class="form-shell narrow" method="post" novalidate>
+  {% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">State administration</p><h2>Organization details</h2><p>Counties added here become available for training hosts, instructor assignments, registrations, and administrator access.</p></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}
+      <label class="field"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>
+      {% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'organization_list' %}">Cancel</a><button class="button primary" type="submit">Save organization</button></div>
+</form>
+{% endblock %}

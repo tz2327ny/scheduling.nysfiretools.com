@@ -28,12 +28,12 @@
           {% for unit_form in unit_formset %}
           <tr>
             {% for hidden in unit_form.hidden_fields %}{{ hidden }}{% endfor %}
-            <td>{{ unit_form.unit_number }}{{ unit_form.unit_number.errors }}</td>
-            <td>{{ unit_form.title }}{{ unit_form.title.errors }}</td>
-            <td>{{ unit_form.required_instructors }}{{ unit_form.required_instructors.errors }}</td>
-            <td>{{ unit_form.requires_safety_officer }}{{ unit_form.requires_safety_officer.errors }}</td>
-            <td>{{ unit_form.notes }}{{ unit_form.notes.errors }}</td>
-            <td>{{ unit_form.active }}{{ unit_form.active.errors }}</td>
+            <td data-label="Unit">{{ unit_form.unit_number }}{{ unit_form.unit_number.errors }}</td>
+            <td data-label="Title / description">{{ unit_form.title }}{{ unit_form.title.errors }}</td>
+            <td data-label="Instructors required">{{ unit_form.required_instructors }}{{ unit_form.required_instructors.errors }}</td>
+            <td data-label="Safety officer">{{ unit_form.requires_safety_officer }}{{ unit_form.requires_safety_officer.errors }}</td>
+            <td data-label="Notes">{{ unit_form.notes }}{{ unit_form.notes.errors }}</td>
+            <td data-label="Active">{{ unit_form.active }}{{ unit_form.active.errors }}</td>
           </tr>
           {% endfor %}
         </tbody>

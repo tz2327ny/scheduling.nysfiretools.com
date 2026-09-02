@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Regional Schedule · NYS Fire{% endblock %}
-{% block page_title %}Regional schedule{% endblock %}
+{% block title %}Training Schedule · NYS Fire{% endblock %}
+{% block page_title %}Training schedule{% endblock %}
 
 {% block content %}
 <section class="page-actions">
-  <p>Purposed and confirmed courses across the four counties and the State Academy.</p>
+  <p>View proposed, confirmed, completed, and cancelled training from participating organizations.</p>
   <a class="button primary" href="{% url 'training_create' %}">＋ Propose training</a>
 </section>
 
@@ -26,16 +26,16 @@
 </form>
 
 <section class="panel table-panel">
-  <div class="data-table" role="table" aria-label="Regional training schedule">
+  <div class="data-table" role="table" aria-label="Training schedule">
     <div class="data-row data-head" role="row">
       <span>Course</span><span>Organization</span><span>Next session</span><span>Status</span><span></span>
     </div>
     {% for event in events %}
     <a class="data-row" role="row" href="{% url 'training_detail' event.pk %}">
-      <span><strong>{{ event.course.name }}</strong><small>{{ event.course.record_number }}{% if event.offering_number %} · Offering {{ event.offering_number }}{% endif %}</small></span>
-      <span>{{ event.host_organization.short_name }}</span>
-      <span>{{ event.next_session|date:"M j, Y · g:i A"|default:"Not scheduled" }}</span>
-      <span><i class="status {{ event.status }}">{{ event.get_status_display }}</i></span>
+      <span data-label="Course"><strong>{{ event.course.name }}</strong><small>{{ event.course.record_number }}{% if event.offering_number %} · Offering {{ event.offering_number }}{% endif %}</small></span>
+      <span data-label="Organization">{{ event.host_organization.short_name }}</span>
+      <span data-label="Next session">{{ event.next_session|date:"M j, Y · g:i A"|default:"Not scheduled" }}</span>
+      <span data-label="Status"><i class="status {{ event.status }}">{{ event.get_status_display }}</i></span>
       <span class="row-arrow">→</span>
     </a>
     {% empty %}<div class="empty-state">No courses match these filters.</div>{% endfor %}

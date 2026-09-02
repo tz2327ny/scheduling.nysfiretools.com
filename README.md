@@ -1,16 +1,17 @@
 # NYS Fire Training Scheduler
 
-A standalone course and instructor coordination system for Jefferson, Lewis, St. Lawrence, and Oswego Counties, with regional instructors assigned to the New York State Academy of Fire Science.
+A standalone, statewide-ready course and instructor coordination system for participating New York State counties and instructors assigned to the New York State Academy of Fire Science.
 
 ## Current product slice
 
-- Regional dashboard and schedule awareness
+- Statewide dashboard and schedule awareness
 - Course library with a persistent Course Record Number and instructor staffing requirements
 - County and Academy instructor directory
 - Course-specific instructor authorizations
 - Instructor self-registration with State Admin account approval
 - Instructor-submitted course authorization claims with State verification
 - Statewide user management and county/organization administrator assignments
+- State administrator management of participating counties and organizations
 - Case-insensitive unique account emails and duplicate-account consolidation
 - Self-service password recovery and State administrator password resets
 - Instructor travel preferences
@@ -54,4 +55,4 @@ After deployment succeeds, add `scheduling.nysfiretools.com` as a Railway custom
 
 ## Administration
 
-Django superusers provide statewide/system administration. Organization administrators receive an `Organization administrator` role for the county or Academy they manage. County-scoped editing is enforced in application views; regional schedule visibility remains shared.
+Django superusers provide statewide/system administration. Organization administrators receive an `Organization administrator` role for the county or Academy they manage. County-scoped editing is enforced in application views; schedule visibility remains shared.

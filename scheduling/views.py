@@ -18,6 +18,7 @@ from .forms import (
     InstructorAuthorizationRequestForm,
     InstructorAssignmentForm,
     InstructorForm,
+    OrganizationForm,
     RecurringAvailabilityRuleForm,
     TrainingEventForm,
     TrainingSessionFormSet,
@@ -100,17 +101,71 @@ def dashboard(request):
         event.status == TrainingEvent.Status.CONFIRMED for event in upcoming
     )
     proposed_count = sum(event.status == TrainingEvent.Status.PROPOSED for event in upcoming)
-    needs_instructors = sum(event.staffing_gap > 0 for event in upcoming)
+    open_staffing_positions = sum(event.staffing_gap for event in upcoming)
 
     context = {
         "upcoming": upcoming,
         "confirmed_count": confirmed_count,
         "proposed_count": proposed_count,
-        "needs_instructors": needs_instructors,
+        "open_staffing_positions": open_staffing_positions,
         "active_instructors": Instructor.objects.filter(active=True).count(),
         "today": timezone.localdate(),
     }
     return render(request, "scheduling/dashboard.html", context)
+
+
+@login_required_unless_debug
+def organization_list(request):
+    require_course_manager(request.user)
+    organizations = Organization.objects.annotate(
+        instructor_count=Count("instructors", distinct=True),
+        training_count=Count("training_events", distinct=True),
+        administrator_count=Count(
+            "user_roles",
+            filter=Q(user_roles__role="administrator"),
+            distinct=True,
+        ),
+    )
+    return render(
+        request,
+        "scheduling/organization_list.html",
+        {"organizations": organizations},
+    )
+
+
+@login_required_unless_debug
+def organization_create(request):
+    require_course_manager(request.user)
+    form = OrganizationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        organization = form.save()
+        messages.success(request, f"{organization.name} was added.")
+        return redirect("organization_list")
+    return render(
+        request,
+        "scheduling/organization_form.html",
+        {"form": form, "page_heading": "Add organization"},
+    )
+
+
+@login_required_unless_debug
+def organization_edit(request, pk):
+    require_course_manager(request.user)
+    organization = get_object_or_404(Organization, pk=pk)
+    form = OrganizationForm(request.POST or None, instance=organization)
+    if request.method == "POST" and form.is_valid():
+        organization = form.save()
+        messages.success(request, f"{organization.name} was updated.")
+        return redirect("organization_list")
+    return render(
+        request,
+        "scheduling/organization_form.html",
+        {
+            "form": form,
+            "organization": organization,
+            "page_heading": f"Edit {organization.short_name}",
+        },
+    )
 
 
 @login_required_unless_debug

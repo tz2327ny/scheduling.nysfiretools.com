@@ -4,7 +4,7 @@
 <section class="toolbar" aria-label="Schedule actions">
   <div class="date-context">
     <span class="date-icon" aria-hidden="true">{{ today|date:"d" }}</span>
-    <div><strong>{{ today|date:"l, F j" }}</strong><span>Showing the next regional training activity</span></div>
+    <div><strong>{{ today|date:"l, F j" }}</strong><span>Upcoming training and staffing needs</span></div>
   </div>
   <div class="toolbar-actions">
     <a class="button secondary" href="{% url 'schedule' %}">View calendar</a>
@@ -24,26 +24,22 @@
     <span class="stat-note"><i></i> Awaiting coordination</span>
   </article>
   <article class="stat-card attention">
-    <span class="stat-label">Need instructors</span>
-    <strong>{{ needs_instructors }}</strong>
-    <span class="stat-note warning"><i></i> Action recommended</span>
+    <span class="stat-label">Open staffing positions</span>
+    <strong>{{ open_staffing_positions }}</strong>
+    <span class="stat-note warning"><i></i> Across upcoming units</span>
   </article>
   <article class="stat-card">
     <span class="stat-label">Active instructors</span>
     <strong>{{ active_instructors }}</strong>
-    <span class="stat-note"><i></i> County and regional</span>
+    <span class="stat-note"><i></i> County and Academy assigned</span>
   </article>
 </section>
 
 <section class="dashboard-grid">
   <div class="panel schedule-panel" id="schedule">
     <div class="panel-header">
-      <div><p class="eyebrow">Regional awareness</p><h2>Upcoming training</h2></div>
-      <div class="filter-pills" aria-label="Training filters">
-        <button class="pill active" type="button">All</button>
-        <button class="pill" type="button">Confirmed</button>
-        <button class="pill" type="button">Purposed</button>
-      </div>
+      <div><p class="eyebrow">Schedule awareness</p><h2>Upcoming training</h2></div>
+      <a class="text-link" href="{% url 'schedule' %}">Filter schedule →</a>
     </div>
     <div class="training-list">
       {% for event in upcoming %}
@@ -80,7 +76,7 @@
       </div>
       {% endfor %}
     </div>
-    <a class="panel-link" href="{% url 'schedule' %}">Open full regional schedule <span aria-hidden="true">→</span></a>
+    <a class="panel-link" href="{% url 'schedule' %}">Open full schedule <span aria-hidden="true">→</span></a>
   </div>
 
   <aside class="panel awareness-panel">

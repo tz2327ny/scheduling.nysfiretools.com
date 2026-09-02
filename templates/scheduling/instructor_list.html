@@ -5,7 +5,7 @@
 
 {% block content %}
 <section class="page-actions">
-  <p>County-assigned and Academy-based regional instructors.</p>
+  <p>County-assigned instructors and instructors assigned to the New York State Academy of Fire Science.</p>
   {% if can_create %}<a class="button primary" href="{% url 'instructor_create' %}">＋ Add instructor</a>{% endif %}
 </section>
 
@@ -26,12 +26,12 @@
     </div>
     {% for instructor in instructors %}
     <div class="data-row" role="row">
-      <span class="person-cell"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.email|default:"No email entered" }}</small></span></span>
-      <span>{{ instructor.home_organization.short_name }}{% if instructor.is_regional %}<small>Regional instructor</small>{% endif %}</span>
-      <span>{{ instructor.get_travel_preference_display }}</span>
-      <span>{{ instructor.authorization_count }}</span>
-      <span>{{ instructor.upcoming_assignment_count }}</span>
-      <span class="row-actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} one-time · {{ instructor.recurring_availability_count }} weekly</small>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
+      <span class="person-cell" data-label="Instructor"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.email|default:"No email entered" }}</small></span></span>
+      <span data-label="Assignment">{{ instructor.home_organization.short_name }}{% if instructor.is_regional %}<small>Academy instructor</small>{% endif %}</span>
+      <span data-label="Travel">{{ instructor.get_travel_preference_display }}</span>
+      <span data-label="Authorizations">{{ instructor.authorization_count }}</span>
+      <span data-label="Upcoming">{{ instructor.upcoming_assignment_count }}</span>
+      <span class="row-actions" data-label="Actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} one-time · {{ instructor.recurring_availability_count }} weekly</small>{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
     </div>
     {% empty %}<div class="empty-state">No instructors match this filter.</div>{% endfor %}
   </div>

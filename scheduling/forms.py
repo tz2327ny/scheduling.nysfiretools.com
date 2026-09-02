@@ -8,6 +8,7 @@ from .models import (
     CourseUnit,
     Instructor,
     InstructorAssignment,
+    Organization,
     RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
@@ -16,6 +17,36 @@ from .models import (
 
 class DateTimeInput(forms.DateTimeInput):
     input_type = "datetime-local"
+
+
+class OrganizationForm(forms.ModelForm):
+    class Meta:
+        model = Organization
+        fields = ("name", "short_name", "kind", "display_order", "active")
+        help_texts = {
+            "name": "Use the full official name, such as Albany County.",
+            "short_name": "The shorter label shown in schedules and staffing screens.",
+            "display_order": "Lower numbers appear first in organization lists.",
+            "active": "Inactive organizations remain in past records but cannot host new training.",
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        matches = Organization.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            matches = matches.exclude(pk=self.instance.pk)
+        if matches.exists():
+            raise forms.ValidationError("An organization with this name already exists.")
+        return name
+
+    def clean_short_name(self):
+        short_name = self.cleaned_data["short_name"].strip()
+        matches = Organization.objects.filter(short_name__iexact=short_name)
+        if self.instance.pk:
+            matches = matches.exclude(pk=self.instance.pk)
+        if matches.exists():
+            raise forms.ValidationError("An organization with this short name already exists.")
+        return short_name
 
 
 class AvailabilityBlockForm(forms.ModelForm):

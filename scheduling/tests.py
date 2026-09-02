@@ -736,6 +736,10 @@ class CourseManagementTests(TestCase):
         self.assertContains(response, "Unit 14")
         self.assertContains(response, "4 instructors required")
 
+        dashboard_response = self.client.get(reverse("dashboard"))
+        self.assertEqual(dashboard_response.context["open_staffing_positions"], 49)
+        self.assertContains(dashboard_response, "Open staffing positions")
+
     @override_settings(DEBUG=False)
     def test_non_system_administrator_cannot_create_course(self):
         User = get_user_model()
@@ -748,3 +752,70 @@ class CourseManagementTests(TestCase):
         response = self.client.get(reverse("course_create"))
 
         self.assertEqual(response.status_code, 403)
+
+
+class OrganizationManagementTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.state_admin = User.objects.create_superuser(
+            username="state-organizations@example.com",
+            email="state-organizations@example.com",
+            password="test-password",
+        )
+        self.jefferson = Organization.objects.get(name="Jefferson County")
+
+    @override_settings(DEBUG=False)
+    def test_state_administrator_can_add_county(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("organization_create"),
+            {
+                "name": "Albany County",
+                "short_name": "Albany",
+                "kind": Organization.Kind.COUNTY,
+                "display_order": 20,
+                "active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("organization_list"))
+        organization = Organization.objects.get(name="Albany County")
+        self.assertEqual(organization.short_name, "Albany")
+        self.assertTrue(organization.active)
+
+    @override_settings(DEBUG=False)
+    def test_county_administrator_cannot_manage_organizations(self):
+        county_admin = get_user_model().objects.create_user(
+            username="county-organizations@example.com",
+            password="test-password",
+        )
+        UserOrganizationRole.objects.create(
+            user=county_admin,
+            organization=self.jefferson,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+        self.client.force_login(county_admin)
+
+        response = self.client.get(reverse("organization_list"))
+
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(DEBUG=False)
+    def test_organization_names_and_short_names_are_case_insensitive_unique(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("organization_create"),
+            {
+                "name": "jefferson county",
+                "short_name": "JEFFERSON",
+                "kind": Organization.Kind.COUNTY,
+                "display_order": 0,
+                "active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context["form"], "name", "An organization with this name already exists.")
+        self.assertFormError(response.context["form"], "short_name", "An organization with this short name already exists.")
