@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import UserOrganizationRole
+from scheduling.forms import InstructorAssignmentForm
 from scheduling.models import (
     AvailabilityBlock,
     Course,
@@ -181,6 +182,54 @@ class InstructorConflictTests(SchedulingTestCase):
 
 
 class EligibleInstructorTests(SchedulingTestCase):
+    def test_assignment_dropdown_lists_each_authorized_instructor_once(self):
+        instructor = self.make_instructor("Pete", self.jefferson)
+        for index in range(3):
+            other_course = Course.objects.create(
+                record_number=f"99-88-100{index}",
+                name=f"Additional Authorization {index}",
+            )
+            CourseAuthorization.objects.create(
+                instructor=instructor,
+                course=other_course,
+                status=CourseAuthorization.Status.ACTIVE,
+                can_lead=True,
+                can_assist=True,
+            )
+
+        form = InstructorAssignmentForm(session=self.session)
+        instructor_ids = list(
+            form.fields["instructor"].queryset.values_list("pk", flat=True)
+        )
+
+        self.assertEqual(instructor_ids.count(instructor.pk), 1)
+
+    def test_role_permission_must_belong_to_the_scheduled_course(self):
+        instructor = self.make_instructor("CourseSpecific", self.jefferson)
+        scheduled_course_authorization = instructor.course_authorizations.get(
+            course=self.course
+        )
+        scheduled_course_authorization.can_assist = False
+        scheduled_course_authorization.save(update_fields=("can_assist",))
+        other_course = Course.objects.create(
+            record_number="99-88-2000",
+            name="Unrelated Assistant Authorization",
+        )
+        CourseAuthorization.objects.create(
+            instructor=instructor,
+            course=other_course,
+            status=CourseAuthorization.Status.ACTIVE,
+            can_lead=True,
+            can_assist=True,
+        )
+
+        eligible = eligible_instructors_for_session(
+            self.session,
+            InstructorAssignment.Role.ASSISTANT,
+        )
+
+        self.assertNotIn(instructor, eligible)
+
     def test_matching_includes_travelers_and_excludes_local_only_outside_home(self):
         home_instructor = self.make_instructor("Home", self.jefferson)
         regional_instructor = self.make_instructor("Regional", self.academy)

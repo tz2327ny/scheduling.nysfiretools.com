@@ -24,16 +24,21 @@ def eligible_instructors_for_session(session, role):
         if role == InstructorAssignment.Role.LEAD
         else Q(course_authorizations__can_assist=True)
     )
+    authorization_requirement = (
+        Q(course_authorizations__course=session.event.course)
+        & Q(course_authorizations__status=CourseAuthorization.Status.ACTIVE)
+        & role_requirement
+        & (
+            Q(course_authorizations__effective_date__isnull=True)
+            | Q(course_authorizations__effective_date__lte=today)
+        )
+        & (
+            Q(course_authorizations__expiration_date__isnull=True)
+            | Q(course_authorizations__expiration_date__gte=today)
+        )
+    )
     instructors = Instructor.objects.filter(
-        active=True,
-        course_authorizations__course=session.event.course,
-        course_authorizations__status=CourseAuthorization.Status.ACTIVE,
-    ).filter(role_requirement)
-    instructors = instructors.filter(
-        Q(course_authorizations__effective_date__isnull=True)
-        | Q(course_authorizations__effective_date__lte=today),
-        Q(course_authorizations__expiration_date__isnull=True)
-        | Q(course_authorizations__expiration_date__gte=today),
+        Q(active=True) & authorization_requirement
     )
 
     unavailable_ids = set(AvailabilityBlock.objects.filter(
@@ -80,6 +85,7 @@ def eligible_instructors_for_session(session, role):
     )
     return (
         instructors.select_related("home_organization")
+        .distinct()
         .annotate(
             availability_rank=Case(
                 When(pk__in=preferred_ids, then=Value(0)),
