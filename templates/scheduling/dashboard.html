@@ -12,6 +12,26 @@
   </div>
 </section>
 
+<details class="dashboard-filter panel" {% if not show_all_organizations %}open{% endif %}>
+  <summary>
+    <span><small>Dashboard courses</small><strong>{{ scope_label }}</strong></span>
+    <span class="filter-summary-action">Choose counties <i aria-hidden="true">⌄</i></span>
+  </summary>
+  <form method="get" data-dashboard-filter>
+    <div class="dashboard-filter-heading">
+      <div><h2>Courses to display</h2><p>Choose one or several host counties or organizations.</p></div>
+      <input type="search" placeholder="Search counties" aria-label="Search counties and organizations" data-organization-search>
+    </div>
+    <div class="dashboard-filter-options">
+      <label class="dashboard-filter-option all-option"><input type="checkbox" name="all" value="1" {% if show_all_organizations %}checked{% endif %} data-all-organizations><span><strong>All scheduled courses</strong><small>Show every host organization</small></span></label>
+      {% for organization in organizations %}
+      <label class="dashboard-filter-option" data-organization-option><input type="checkbox" name="organization" value="{{ organization.pk }}" {% if organization.pk in selected_organization_ids %}checked{% endif %} data-organization-choice><span><strong>{{ organization.short_name }}</strong><small>{{ organization.get_kind_display }}</small></span></label>
+      {% endfor %}
+    </div>
+    <div class="dashboard-filter-actions"><button class="button primary" type="submit">Update dashboard</button>{% if not show_all_organizations %}<a class="button secondary" href="{% url 'dashboard' %}">Show all</a>{% endif %}</div>
+  </form>
+</details>
+
 <section class="stats-grid" aria-label="Schedule summary">
   <article class="stat-card">
     <span class="stat-label">Confirmed courses</span>
@@ -38,7 +58,7 @@
 <section class="dashboard-grid">
   <div class="panel schedule-panel" id="schedule">
     <div class="panel-header">
-      <div><p class="eyebrow">Schedule awareness</p><h2>Upcoming training</h2></div>
+      <div><p class="eyebrow">Schedule awareness</p><h2>Upcoming training</h2>{% if upcoming_total_count > 8 %}<small class="panel-heading-note">Showing the next 8 of {{ upcoming_total_count }}</small>{% endif %}</div>
       <a class="text-link" href="{% url 'schedule' %}">Filter schedule →</a>
     </div>
     <div class="training-list">
@@ -102,3 +122,5 @@
   </aside>
 </section>
 {% endblock %}
+
+{% block extra_scripts %}<script>(function(){var form=document.querySelector('[data-dashboard-filter]');if(!form)return;var all=form.querySelector('[data-all-organizations]');var choices=Array.from(form.querySelectorAll('[data-organization-choice]'));var search=form.querySelector('[data-organization-search]');all.addEventListener('change',function(){if(all.checked)choices.forEach(function(choice){choice.checked=false;});});choices.forEach(function(choice){choice.addEventListener('change',function(){if(choice.checked)all.checked=false;if(!choices.some(function(item){return item.checked;}))all.checked=true;});});search.addEventListener('input',function(){var query=search.value.trim().toLowerCase();form.querySelectorAll('[data-organization-option]').forEach(function(option){option.hidden=!option.textContent.toLowerCase().includes(query);});});})();</script>{% endblock %}

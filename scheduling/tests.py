@@ -453,6 +453,87 @@ class AuthenticationTests(TestCase):
         self.assertRedirects(response, f"{reverse('login')}?next=/")
 
 
+class DashboardOrganizationFilterTests(SchedulingTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = get_user_model().objects.create_user(
+            username="dashboard@example.com",
+            password="test-password",
+        )
+        self.client.force_login(self.user)
+        self.lewis_event = TrainingEvent.objects.create(
+            course=self.course,
+            host_organization=self.lewis,
+            status=TrainingEvent.Status.PROPOSED,
+            location_name="Lowville",
+        )
+        TrainingSession.objects.create(
+            event=self.lewis_event,
+            starts_at=self.starts_at + timedelta(days=1),
+            ends_at=self.starts_at + timedelta(days=1, hours=4),
+        )
+        self.academy_event = TrainingEvent.objects.create(
+            course=self.course,
+            host_organization=self.academy,
+            status=TrainingEvent.Status.PROPOSED,
+            location_name="Montour Falls",
+        )
+        TrainingSession.objects.create(
+            event=self.academy_event,
+            starts_at=self.starts_at + timedelta(days=2),
+            ends_at=self.starts_at + timedelta(days=2, hours=4),
+        )
+
+    @override_settings(DEBUG=False)
+    def test_dashboard_defaults_to_all_scheduled_courses(self):
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["show_all_organizations"])
+        self.assertEqual(response.context["scope_label"], "All scheduled courses")
+        self.assertEqual(response.context["upcoming_total_count"], 3)
+        self.assertEqual(response.context["confirmed_count"], 1)
+        self.assertEqual(response.context["proposed_count"], 2)
+
+    @override_settings(DEBUG=False)
+    def test_dashboard_can_show_one_county(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"organization": [self.jefferson.pk]},
+        )
+
+        self.assertFalse(response.context["show_all_organizations"])
+        self.assertEqual(
+            response.context["selected_organization_ids"],
+            {self.jefferson.pk},
+        )
+        self.assertEqual(response.context["scope_label"], self.jefferson.short_name)
+        self.assertEqual(
+            [event.pk for event in response.context["upcoming"]],
+            [self.event.pk],
+        )
+        self.assertEqual(response.context["confirmed_count"], 1)
+        self.assertEqual(response.context["proposed_count"], 0)
+
+    @override_settings(DEBUG=False)
+    def test_dashboard_can_combine_two_counties(self):
+        response = self.client.get(
+            reverse("dashboard"),
+            {"organization": [self.jefferson.pk, self.lewis.pk]},
+        )
+
+        self.assertEqual(
+            response.context["selected_organization_ids"],
+            {self.jefferson.pk, self.lewis.pk},
+        )
+        self.assertEqual(response.context["scope_label"], "2 organizations selected")
+        self.assertEqual(
+            {event.pk for event in response.context["upcoming"]},
+            {self.event.pk, self.lewis_event.pk},
+        )
+        self.assertNotContains(response, "Montour Falls")
+
+
 class NotificationPreferenceTests(SchedulingTestCase):
     def setUp(self):
         super().setUp()

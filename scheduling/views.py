@@ -58,7 +58,21 @@ def health(request):
 @login_required_unless_debug
 def dashboard(request):
     now = timezone.now()
-    upcoming = list(
+    organizations = Organization.objects.filter(active=True)
+    selected_values = request.GET.getlist("organization")
+    show_all_organizations = request.GET.get("all") == "1" or not selected_values
+    selected_organization_ids = set()
+    if not show_all_organizations:
+        requested_ids = {
+            int(value) for value in selected_values if value.isdigit()
+        }
+        selected_organization_ids = set(
+            organizations.filter(pk__in=requested_ids).values_list("pk", flat=True)
+        )
+        if not selected_organization_ids:
+            show_all_organizations = True
+
+    upcoming_query = (
         TrainingEvent.objects.filter(
             Q(sessions__ends_at__gte=now) | Q(sessions__starts_at__isnull=True),
         )
@@ -72,9 +86,14 @@ def dashboard(request):
             "sessions__course_unit",
             "sessions__instructor_assignments__instructor",
         )
-        .order_by("next_session")[:8]
+        .order_by("next_session")
     )
-    for event in upcoming:
+    if not show_all_organizations:
+        upcoming_query = upcoming_query.filter(
+            host_organization_id__in=selected_organization_ids
+        )
+    scoped_upcoming = list(upcoming_query)
+    for event in scoped_upcoming:
         event.staffing_gap = 0
         event.required_positions = 0
         event.filled_positions = 0
@@ -102,17 +121,31 @@ def dashboard(request):
                 event.unscheduled_units += 1
 
     confirmed_count = sum(
-        event.status == TrainingEvent.Status.CONFIRMED for event in upcoming
+        event.status == TrainingEvent.Status.CONFIRMED for event in scoped_upcoming
     )
-    proposed_count = sum(event.status == TrainingEvent.Status.PROPOSED for event in upcoming)
-    open_staffing_positions = sum(event.staffing_gap for event in upcoming)
+    proposed_count = sum(
+        event.status == TrainingEvent.Status.PROPOSED for event in scoped_upcoming
+    )
+    open_staffing_positions = sum(event.staffing_gap for event in scoped_upcoming)
+    upcoming = scoped_upcoming[:8]
+    if show_all_organizations:
+        scope_label = "All scheduled courses"
+    elif len(selected_organization_ids) == 1:
+        scope_label = organizations.get(pk=next(iter(selected_organization_ids))).short_name
+    else:
+        scope_label = f"{len(selected_organization_ids)} organizations selected"
 
     context = {
         "upcoming": upcoming,
+        "upcoming_total_count": len(scoped_upcoming),
         "confirmed_count": confirmed_count,
         "proposed_count": proposed_count,
         "open_staffing_positions": open_staffing_positions,
         "active_instructors": Instructor.objects.filter(active=True).count(),
+        "organizations": organizations,
+        "selected_organization_ids": selected_organization_ids,
+        "show_all_organizations": show_all_organizations,
+        "scope_label": scope_label,
         "today": timezone.localdate(),
     }
     return render(request, "scheduling/dashboard.html", context)
