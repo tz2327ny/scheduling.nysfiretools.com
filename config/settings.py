@@ -168,6 +168,15 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 )
 PASSWORD_RESET_TIMEOUT = int(os.environ.get("PASSWORD_RESET_TIMEOUT", "3600"))
 
+# Cloudflare Email Sending uses HTTPS on Railway Hobby, where outbound SMTP is
+# unavailable. EMAIL_HOST_PASSWORD remains a compatibility fallback while the
+# production credential transitions from SMTP to the API backend.
+CLOUDFLARE_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+CLOUDFLARE_EMAIL_API_TOKEN = os.environ.get(
+    "CLOUDFLARE_EMAIL_API_TOKEN", EMAIL_HOST_PASSWORD
+)
+CLOUDFLARE_EMAIL_TIMEOUT = int(os.environ.get("CLOUDFLARE_EMAIL_TIMEOUT", "10"))
+
 # Operational email and opt-in SMS notifications.
 SITE_BASE_URL = os.environ.get(
     "SITE_BASE_URL", "https://scheduling.nysfiretools.com"

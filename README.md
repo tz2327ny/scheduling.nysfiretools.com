@@ -53,7 +53,7 @@ Create a Railway project with an application service and PostgreSQL service. Con
 - `ALLOWED_HOSTS=scheduling.nysfiretools.com,<railway-generated-host>`
 - `CSRF_TRUSTED_ORIGINS=https://scheduling.nysfiretools.com,https://<railway-generated-host>`
 - `DATABASE_URL` as a reference to the Railway PostgreSQL service
-- `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` for password-reset email delivery
+- `EMAIL_BACKEND=config.email_backend.CloudflareEmailBackend`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_API_TOKEN`, and `DEFAULT_FROM_EMAIL` for Cloudflare password-reset email delivery over HTTPS
 - `NOTIFICATION_EMAIL_ENABLED=true` to enable operational email notices
 - `SITE_BASE_URL=https://scheduling.nysfiretools.com` for links in notifications
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM_NUMBER` for opt-in texts

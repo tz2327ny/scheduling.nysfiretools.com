@@ -1,3 +1,6 @@
+import json
+from unittest.mock import MagicMock, patch
+
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.db import IntegrityError, transaction
@@ -11,6 +14,48 @@ from .models import InstructorApplication, UserOrganizationRole
 
 User = get_user_model()
 
+
+class CloudflareEmailBackendTests(TestCase):
+    @override_settings(
+        EMAIL_BACKEND="config.email_backend.CloudflareEmailBackend",
+        CLOUDFLARE_ACCOUNT_ID="account-id",
+        CLOUDFLARE_EMAIL_API_TOKEN="restricted-token",
+        CLOUDFLARE_EMAIL_TIMEOUT=5,
+        DEFAULT_FROM_EMAIL="NYS Fire Scheduler <notifications@nysfiretools.com>",
+    )
+    @patch("config.email_backend.urlopen")
+    def test_sends_email_through_cloudflare_https_api(self, mocked_urlopen):
+        provider_response = MagicMock()
+        provider_response.__enter__.return_value = provider_response
+        provider_response.read.return_value = json.dumps(
+            {
+                "success": True,
+                "errors": [],
+                "result": {
+                    "delivered": ["instructor@example.com"],
+                    "queued": [],
+                },
+            }
+        ).encode("utf-8")
+        mocked_urlopen.return_value = provider_response
+
+        sent = mail.send_mail(
+            "Schedule updated",
+            "Your schedule changed.",
+            None,
+            ["instructor@example.com"],
+        )
+
+        self.assertEqual(sent, 1)
+        request = mocked_urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["from"], "notifications@nysfiretools.com")
+        self.assertEqual(payload["to"], "instructor@example.com")
+        self.assertEqual(payload["subject"], "Schedule updated")
+        self.assertEqual(
+            request.get_header("Authorization"),
+            "Bearer restricted-token",
+        )
 
 class InstructorAccountWorkflowTests(TestCase):
     password = "TestAccess!23456"
