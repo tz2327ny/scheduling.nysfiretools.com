@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
@@ -224,14 +226,30 @@ class TrainingSessionForm(forms.ModelForm):
         fields = ("course_unit", "starts_at", "ends_at", "location_override")
         widgets = {
             "course_unit": forms.HiddenInput(),
-            "starts_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
-            "ends_at": DateTimeInput(format="%Y-%m-%dT%H:%M"),
+            "starts_at": DateTimeInput(
+                format="%Y-%m-%dT%H:%M",
+                attrs={"data-unit-start": ""},
+            ),
+            "ends_at": DateTimeInput(
+                format="%Y-%m-%dT%H:%M",
+                attrs={"data-unit-end": ""},
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["starts_at"].required = False
         self.fields["ends_at"].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        starts_at = cleaned_data.get("starts_at")
+        ends_at = cleaned_data.get("ends_at")
+        raw_end = self.data.get(self.add_prefix("ends_at"), "") if self.is_bound else ""
+        if starts_at and not ends_at and not raw_end.strip():
+            cleaned_data["ends_at"] = starts_at + timedelta(hours=3)
+            self.instance.ends_at = cleaned_data["ends_at"]
+        return cleaned_data
 
 
 TrainingSessionFormSet = inlineformset_factory(

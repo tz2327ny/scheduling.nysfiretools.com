@@ -1203,6 +1203,61 @@ class CourseManagementTests(TestCase):
         self.assertEqual(dashboard_response.context["open_staffing_positions"], 49)
         self.assertContains(dashboard_response, "Open staffing positions")
 
+    @override_settings(DEBUG=True)
+    def test_unit_schedule_defaults_blank_end_to_three_hours_after_start(self):
+        course = Course.objects.get(record_number="01-05-0101")
+        jefferson = Organization.objects.get(name="Jefferson County")
+        event = TrainingEvent.objects.create(
+            course=course,
+            host_organization=jefferson,
+            status=TrainingEvent.Status.PROPOSED,
+            location_name="Watertown",
+        )
+        sync_event_units(event)
+        formset = event.sessions.order_by("course_unit__unit_number")
+        first_session = formset.first()
+
+        response = self.client.post(
+            reverse("training_edit", args=(event.pk,)),
+            {
+                "course": course.pk,
+                "host_organization": jefferson.pk,
+                "status": TrainingEvent.Status.PROPOSED,
+                "offering_number": "",
+                "location_name": "Watertown",
+                "acadis_registration_url": "",
+                "notes": "",
+                "sessions-TOTAL_FORMS": str(formset.count()),
+                "sessions-INITIAL_FORMS": str(formset.count()),
+                "sessions-MIN_NUM_FORMS": "0",
+                "sessions-MAX_NUM_FORMS": "1000",
+                **{
+                    f"sessions-{index}-id": session.pk
+                    for index, session in enumerate(formset)
+                },
+                **{
+                    f"sessions-{index}-course_unit": session.course_unit_id
+                    for index, session in enumerate(formset)
+                },
+                "sessions-0-starts_at": "2026-09-12T09:00",
+                "sessions-0-ends_at": "",
+                "sessions-0-location_override": "",
+            },
+        )
+
+        self.assertRedirects(response, reverse("training_detail", args=(event.pk,)))
+        first_session.refresh_from_db()
+        self.assertEqual(
+            timezone.localtime(first_session.ends_at),
+            timezone.localtime(first_session.starts_at) + timedelta(hours=3),
+        )
+
+        edit_response = self.client.get(reverse("training_edit", args=(event.pk,)))
+        self.assertContains(edit_response, 'data-unit-start=""')
+        self.assertContains(edit_response, 'data-unit-end=""')
+        self.assertContains(edit_response, "js/training-schedule.js")
+        self.assertContains(edit_response, "automatically suggests an end three hours later")
+
     @override_settings(DEBUG=False)
     def test_non_system_administrator_cannot_create_course(self):
         User = get_user_model()

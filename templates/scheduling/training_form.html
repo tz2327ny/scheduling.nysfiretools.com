@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}{{ page_heading }} · NYS Fire{% endblock %}
 {% block page_title %}{{ page_heading }}{% endblock %}
 {% block content %}
@@ -13,7 +14,7 @@
   <div class="notice-card"><span class="notice-icon">i</span><p><strong>The unit schedule is created from the course matrix.</strong> Save this Purposed offering, then enter a date and time for every unit.</p></div>
   {% else %}
   <section class="panel form-panel">
-    <div class="panel-header"><div><p class="eyebrow">Unit-by-unit schedule</p><h2>Course unit dates and times</h2><p>Dates may remain blank while Purposed. Every active unit requires a date and time before Confirmed.</p></div></div>
+    <div class="panel-header"><div><p class="eyebrow">Unit-by-unit schedule</p><h2>Course unit dates and times</h2><p>Dates may remain blank while Purposed. Entering a start automatically suggests an end three hours later; you can adjust it as needed. Every active unit requires a date and time before Confirmed.</p></div></div>
     {{ formset.management_form }}
     {% for session_form in formset %}
     <div class="unit-session-form">
@@ -28,3 +29,4 @@
   <div class="form-actions"><a class="button secondary" href="{% url 'schedule' %}">Cancel</a><button class="button primary" type="submit">Save training</button></div>
 </form>
 {% endblock %}
+{% block extra_scripts %}<script src="{% static 'js/training-schedule.js' %}"></script>{% endblock %}
