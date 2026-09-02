@@ -329,6 +329,24 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .staffing-alert, .staffing-ready { padding: 4px 8px; border-radius: 999px; font-size: 8px; font-weight: 800; }
 .staffing-alert { color: #9a3412; background: #ffedd5; }
 .staffing-ready { color: #166534; background: #dcfce7; }
+.staffing-slot-list { display: grid; gap: 9px; }
+.staffing-slot { padding: 12px; border: 1px solid var(--slate-200); border-radius: 10px; background: #fbfcfd; }
+.staffing-slot.filled { border-color: #c7e4d5; background: #f5fbf8; }
+.staffing-slot-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+.staffing-slot-heading small, .staffing-slot-heading strong { display: block; }
+.staffing-slot-heading small { margin-bottom: 2px; color: var(--slate-500); font-size: 7px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.staffing-slot-heading strong { color: var(--navy-950); font-size: 11px; }
+.staffing-slot-heading > i { padding: 4px 7px; border-radius: 999px; background: var(--amber-100); color: var(--amber-700); font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.staffing-slot.filled .staffing-slot-heading > i { background: var(--green-100); color: var(--green-700); }
+.staffing-slot .person-chip { width: 100%; }
+.staffing-slot .person-chip form { margin-left: auto; }
+.staffing-slot-empty { margin: 0; color: var(--slate-500); font-size: 10px; }
+.assignment-form.slot-assignment-form { grid-template-columns: minmax(190px, 1fr) auto; margin-top: 0; padding-top: 0; border-top: 0; }
+.extra-assignment-warning { margin-top: 12px; padding: 12px; border: 1px solid #fed7aa; border-radius: 10px; background: #fff7ed; }
+.extra-assignment-warning > strong { color: #9a3412; font-size: 10px; }
+.extra-assignment-warning > p { margin: 3px 0 9px; color: #9a5b08; font-size: 9px; }
+.staffing-filter-note { display: flex; align-items: center; gap: 9px; background: #f9fbfc; }
+.staffing-filter-note p { margin: 0; color: var(--slate-500); font-size: 9px; line-height: 1.45; }
 .assignment-form { display: grid; grid-template-columns: 1.5fr 1fr auto; align-items: end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--slate-100); }
 .assignment-form label span { display: block; margin-bottom: 5px; color: var(--slate-600); font-size: 8px; font-weight: 700; }
 .hidden-field { display: none; }
@@ -619,6 +637,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
   .person-chip { width: 100%; }
   .candidate-list strong { font-size: 11px; }
   .candidate-list small, .eligible-section p { font-size: 10px; }
+  .assignment-form.slot-assignment-form { grid-template-columns: 1fr; }
   .assignment-form select { width: 100%; min-height: 48px; font-size: 16px; }
   .assignment-form .button { width: 100%; }
   .unit-session-form { gap: 13px; margin: 10px; padding: 15px; border: 1px solid var(--slate-200); border-radius: 10px; background: #fbfcfd; }

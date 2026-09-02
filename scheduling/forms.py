@@ -248,13 +248,45 @@ class InstructorAssignmentForm(forms.ModelForm):
         model = InstructorAssignment
         fields = ("instructor", "role", "confirmed")
 
-    def __init__(self, *args, session, **kwargs):
+    def __init__(self, *args, session, role=None, **kwargs):
         from .services import eligible_instructors_for_session
 
         self.session = session
+        self.locked_role = role
         super().__init__(*args, **kwargs)
         self.instance.session = session
-        selected_role = self.data.get("role") if self.is_bound else None
+        existing = session.instructor_assignments.exclude(pk=self.instance.pk)
+        required_instructors = (
+            session.course_unit.required_instructors if session.course_unit else 1
+        )
+        available_roles = []
+        if not existing.filter(role=InstructorAssignment.Role.LEAD).exists():
+            available_roles.append(InstructorAssignment.Role.LEAD)
+        if existing.filter(role=InstructorAssignment.Role.ASSISTANT).count() < max(
+            required_instructors - 1, 0
+        ):
+            available_roles.append(InstructorAssignment.Role.ASSISTANT)
+        if (
+            session.course_unit
+            and session.course_unit.requires_safety_officer
+            and not existing.filter(role=InstructorAssignment.Role.SAFETY_OFFICER).exists()
+        ):
+            available_roles.append(InstructorAssignment.Role.SAFETY_OFFICER)
+
+        role_labels = dict(InstructorAssignment.Role.choices)
+        if role is not None:
+            self.fields["role"].choices = (
+                [(role, role_labels[role])] if role in available_roles else []
+            )
+            self.fields["role"].initial = role
+            self.fields["role"].widget = forms.HiddenInput()
+        else:
+            self.fields["role"].choices = [
+                (available_role, role_labels[available_role])
+                for available_role in available_roles
+            ]
+
+        selected_role = self.data.get("role") if self.is_bound else role
         eligibility_role = (
             InstructorAssignment.Role.LEAD
             if selected_role == InstructorAssignment.Role.LEAD
@@ -264,15 +296,6 @@ class InstructorAssignmentForm(forms.ModelForm):
             assignments__session=session
         )
         self.fields["instructor"].queryset = eligible
-        role_choices = [
-            (InstructorAssignment.Role.LEAD, "Lead instructor"),
-            (InstructorAssignment.Role.ASSISTANT, "Additional instructor"),
-        ]
-        if session.course_unit and session.course_unit.requires_safety_officer:
-            role_choices.append(
-                (InstructorAssignment.Role.SAFETY_OFFICER, "Safety officer")
-            )
-        self.fields["role"].choices = role_choices
 
 
 class InstructorForm(forms.ModelForm):

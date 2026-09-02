@@ -389,10 +389,37 @@ class InstructorAssignment(models.Model):
         )
         if self.role == self.Role.LEAD:
             authorization = authorization.filter(can_lead=True)
-        elif self.role == self.Role.ASSISTANT:
+        elif self.role in (self.Role.ASSISTANT, self.Role.SAFETY_OFFICER):
             authorization = authorization.filter(can_assist=True)
         if not authorization.exists():
             raise ValidationError("This instructor does not have an active authorization for this course and role.")
+        existing_assignments = self.session.instructor_assignments.exclude(pk=self.pk)
+        required_instructors = (
+            self.session.course_unit.required_instructors
+            if self.session.course_unit_id
+            else 1
+        )
+        if (
+            self.role == self.Role.LEAD
+            and existing_assignments.filter(role=self.Role.LEAD).exists()
+        ):
+            raise ValidationError("This unit already has a Lead Instructor assigned.")
+        if self.role == self.Role.ASSISTANT and existing_assignments.filter(
+            role=self.Role.ASSISTANT
+        ).count() >= max(required_instructors - 1, 0):
+            raise ValidationError(
+                "Every required Additional Instructor position is already filled."
+            )
+        if self.role == self.Role.SAFETY_OFFICER:
+            if not (
+                self.session.course_unit_id
+                and self.session.course_unit.requires_safety_officer
+            ):
+                raise ValidationError(
+                    "The course matrix does not require a Safety Officer for this unit."
+                )
+            if existing_assignments.filter(role=self.Role.SAFETY_OFFICER).exists():
+                raise ValidationError("This unit already has a Safety Officer assigned.")
         conflicts = InstructorAssignment.objects.filter(
             instructor=self.instructor,
             confirmed=True,

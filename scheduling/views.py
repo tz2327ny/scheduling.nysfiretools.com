@@ -102,19 +102,28 @@ def dashboard(request):
             unit = session.course_unit
             required_instructors = unit.required_instructors if unit else 1
             requires_safety = bool(unit and unit.requires_safety_officer)
-            instructional_count = sum(
-                assignment.role != InstructorAssignment.Role.SAFETY_OFFICER
+            lead_count = sum(
+                assignment.role == InstructorAssignment.Role.LEAD
+                for assignment in session.instructor_assignments.all()
+            )
+            assistant_count = sum(
+                assignment.role == InstructorAssignment.Role.ASSISTANT
                 for assignment in session.instructor_assignments.all()
             )
             safety_count = sum(
                 assignment.role == InstructorAssignment.Role.SAFETY_OFFICER
                 for assignment in session.instructor_assignments.all()
             )
+            additional_required = max(required_instructors - 1, 0)
             event.required_positions += required_instructors + int(requires_safety)
-            event.filled_positions += min(instructional_count, required_instructors) + min(
-                safety_count, int(requires_safety)
+            event.filled_positions += (
+                min(lead_count, 1)
+                + min(assistant_count, additional_required)
+                + min(safety_count, int(requires_safety))
             )
-            event.staffing_gap += max(required_instructors - instructional_count, 0)
+            event.staffing_gap += max(1 - lead_count, 0) + max(
+                additional_required - assistant_count, 0
+            )
             if requires_safety and not safety_count:
                 event.staffing_gap += 1
             if unit and not session.is_scheduled:
@@ -387,15 +396,29 @@ def training_detail(request, pk):
         requires_safety = bool(
             session.course_unit and session.course_unit.requires_safety_officer
         )
-        instructional_count = sum(
-            assignment.role != InstructorAssignment.Role.SAFETY_OFFICER
+        lead_assignments = [
+            assignment
             for assignment in assignments
-        )
-        safety_count = sum(
-            assignment.role == InstructorAssignment.Role.SAFETY_OFFICER
+            if assignment.role == InstructorAssignment.Role.LEAD
+        ]
+        assistant_assignments = [
+            assignment
             for assignment in assignments
+            if assignment.role == InstructorAssignment.Role.ASSISTANT
+        ]
+        safety_assignments = [
+            assignment
+            for assignment in assignments
+            if assignment.role == InstructorAssignment.Role.SAFETY_OFFICER
+        ]
+        additional_required = max(required_instructors - 1, 0)
+        instructional_count = min(len(lead_assignments), 1) + min(
+            len(assistant_assignments), additional_required
         )
-        instructional_gap = max(required_instructors - instructional_count, 0)
+        safety_count = len(safety_assignments)
+        instructional_gap = max(1 - len(lead_assignments), 0) + max(
+            additional_required - len(assistant_assignments), 0
+        )
         safety_gap = int(requires_safety and not safety_count)
         total_required += required_instructors + int(requires_safety)
         total_filled += min(instructional_count, required_instructors) + min(
@@ -403,6 +426,75 @@ def training_detail(request, pk):
         )
         if session.course_unit and not session.is_scheduled:
             unscheduled_units += 1
+        staffing_slots = []
+        lead_assignment = lead_assignments[0] if lead_assignments else None
+        staffing_slots.append(
+            {
+                "label": "Lead instructor",
+                "role": InstructorAssignment.Role.LEAD,
+                "assignment": lead_assignment,
+                "assignment_form": (
+                    InstructorAssignmentForm(
+                        session=session,
+                        role=InstructorAssignment.Role.LEAD,
+                        auto_id=False,
+                    )
+                    if can_manage and session.is_scheduled and not lead_assignment
+                    else None
+                ),
+            }
+        )
+        for position in range(1, additional_required + 1):
+            assistant_assignment = (
+                assistant_assignments[position - 1]
+                if len(assistant_assignments) >= position
+                else None
+            )
+            staffing_slots.append(
+                {
+                    "label": f"Additional instructor {position}",
+                    "role": InstructorAssignment.Role.ASSISTANT,
+                    "assignment": assistant_assignment,
+                    "assignment_form": (
+                        InstructorAssignmentForm(
+                            session=session,
+                            role=InstructorAssignment.Role.ASSISTANT,
+                            auto_id=False,
+                        )
+                        if can_manage and session.is_scheduled and not assistant_assignment
+                        else None
+                    ),
+                }
+            )
+        safety_assignment = (
+            safety_assignments[0] if requires_safety and safety_assignments else None
+        )
+        if requires_safety:
+            staffing_slots.append(
+                {
+                    "label": "Safety officer",
+                    "role": InstructorAssignment.Role.SAFETY_OFFICER,
+                    "assignment": safety_assignment,
+                    "assignment_form": (
+                        InstructorAssignmentForm(
+                            session=session,
+                            role=InstructorAssignment.Role.SAFETY_OFFICER,
+                            auto_id=False,
+                        )
+                        if can_manage and session.is_scheduled and not safety_assignment
+                        else None
+                    ),
+                }
+            )
+        used_assignment_ids = {
+            assignment.pk
+            for assignment in [
+                lead_assignment,
+                *assistant_assignments[:additional_required],
+                safety_assignment,
+            ]
+            if assignment
+        }
         session_rows.append(
             {
                 "session": session,
@@ -412,17 +504,12 @@ def training_detail(request, pk):
                 "instructional_count": instructional_count,
                 "instructional_gap": instructional_gap,
                 "safety_gap": safety_gap,
-                "eligible_leads": eligible_instructors_for_session(
-                    session, InstructorAssignment.Role.LEAD
-                )[:8],
-                "eligible_assistants": eligible_instructors_for_session(
-                    session, InstructorAssignment.Role.ASSISTANT
-                )[:8],
-                "assignment_form": (
-                    InstructorAssignmentForm(session=session)
-                    if can_manage and session.is_scheduled
-                    else None
-                ),
+                "staffing_slots": staffing_slots,
+                "extra_assignments": [
+                    assignment
+                    for assignment in assignments
+                    if assignment.pk not in used_assignment_ids
+                ],
             }
         )
     return render(

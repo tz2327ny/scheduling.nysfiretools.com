@@ -152,7 +152,7 @@ class InstructorConflictTests(SchedulingTestCase):
             InstructorAssignment.objects.create(
                 session=overlapping,
                 instructor=instructor,
-                role=InstructorAssignment.Role.ASSISTANT,
+                role=InstructorAssignment.Role.LEAD,
             )
 
     def test_non_overlapping_assignment_is_allowed(self):
@@ -176,9 +176,113 @@ class InstructorConflictTests(SchedulingTestCase):
         assignment = InstructorAssignment.objects.create(
             session=later_session,
             instructor=instructor,
-            role=InstructorAssignment.Role.ASSISTANT,
+            role=InstructorAssignment.Role.LEAD,
         )
         self.assertIsNotNone(assignment.pk)
+
+
+class InstructorStaffingPositionTests(SchedulingTestCase):
+    def setUp(self):
+        super().setUp()
+        self.unit = CourseUnit.objects.create(
+            course=self.course,
+            unit_number=1,
+            title="Practical skills",
+            required_instructors=3,
+            requires_safety_officer=True,
+        )
+        self.session.course_unit = self.unit
+        self.session.save(update_fields=("course_unit",))
+
+    def test_detail_shows_each_matrix_staffing_position(self):
+        lead = self.make_instructor("Pete", self.jefferson)
+        InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=lead,
+            role=InstructorAssignment.Role.LEAD,
+        )
+        administrator = get_user_model().objects.create_superuser(
+            username="staffing.admin@example.com",
+            email="staffing.admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(administrator)
+
+        response = self.client.get(reverse("training_detail", args=(self.event.pk,)))
+
+        slots = response.context["session_rows"][0]["staffing_slots"]
+        self.assertEqual(
+            [slot["label"] for slot in slots],
+            [
+                "Lead instructor",
+                "Additional instructor 1",
+                "Additional instructor 2",
+                "Safety officer",
+            ],
+        )
+        self.assertEqual(slots[0]["assignment"].instructor, lead)
+        self.assertIsNone(slots[0]["assignment_form"])
+        self.assertEqual(
+            slots[1]["assignment_form"].locked_role,
+            InstructorAssignment.Role.ASSISTANT,
+        )
+        self.assertEqual(
+            slots[3]["assignment_form"].locked_role,
+            InstructorAssignment.Role.SAFETY_OFFICER,
+        )
+        self.assertContains(response, "Fill Additional instructor 1")
+        self.assertNotContains(response, "Fill Lead instructor")
+
+    def test_second_lead_is_not_an_available_role_and_is_rejected(self):
+        first_lead = self.make_instructor("FirstLead", self.jefferson)
+        second_lead = self.make_instructor("SecondLead", self.jefferson)
+        InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=first_lead,
+            role=InstructorAssignment.Role.LEAD,
+        )
+
+        form = InstructorAssignmentForm(session=self.session)
+        self.assertNotIn(
+            InstructorAssignment.Role.LEAD,
+            [value for value, _label in form.fields["role"].choices],
+        )
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This unit already has a Lead Instructor assigned.",
+        ):
+            InstructorAssignment.objects.create(
+                session=self.session,
+                instructor=second_lead,
+                role=InstructorAssignment.Role.LEAD,
+            )
+
+    def test_additional_instructors_cannot_exceed_matrix_positions(self):
+        lead = self.make_instructor("Lead", self.jefferson)
+        first_additional = self.make_instructor("AdditionalOne", self.jefferson)
+        second_additional = self.make_instructor("AdditionalTwo", self.jefferson)
+        extra_additional = self.make_instructor("AdditionalExtra", self.jefferson)
+        InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=lead,
+            role=InstructorAssignment.Role.LEAD,
+        )
+        for instructor in (first_additional, second_additional):
+            InstructorAssignment.objects.create(
+                session=self.session,
+                instructor=instructor,
+                role=InstructorAssignment.Role.ASSISTANT,
+            )
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Every required Additional Instructor position is already filled.",
+        ):
+            InstructorAssignment.objects.create(
+                session=self.session,
+                instructor=extra_additional,
+                role=InstructorAssignment.Role.ASSISTANT,
+            )
 
 
 class EligibleInstructorTests(SchedulingTestCase):
@@ -670,7 +774,7 @@ class NotificationPreferenceTests(SchedulingTestCase):
         assignment = InstructorAssignment.objects.create(
             session=self.session,
             instructor=self.instructor,
-            role=InstructorAssignment.Role.ASSISTANT,
+            role=InstructorAssignment.Role.LEAD,
         )
 
         with self.captureOnCommitCallbacks(execute=True):
@@ -704,7 +808,7 @@ class NotificationPreferenceTests(SchedulingTestCase):
         assignment = InstructorAssignment.objects.create(
             session=self.session,
             instructor=self.instructor,
-            role=InstructorAssignment.Role.ASSISTANT,
+            role=InstructorAssignment.Role.LEAD,
         )
         provider_response = MagicMock()
         provider_response.__enter__.return_value = provider_response
