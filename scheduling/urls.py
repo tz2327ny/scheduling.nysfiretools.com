@@ -22,6 +22,11 @@ urlpatterns = [
         name="instructor_authorizations",
     ),
     path(
+        "instructors/<int:pk>/notifications/",
+        views.instructor_notifications,
+        name="instructor_notifications",
+    ),
+    path(
         "instructors/<int:pk>/availability/",
         views.instructor_availability,
         name="instructor_availability",

@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -18,6 +19,7 @@ from .forms import (
     InstructorAuthorizationRequestForm,
     InstructorAssignmentForm,
     InstructorForm,
+    NotificationPreferenceForm,
     OrganizationForm,
     RecurringAvailabilityRuleForm,
     TrainingEventForm,
@@ -29,6 +31,7 @@ from .models import (
     CourseAuthorization,
     Instructor,
     InstructorAssignment,
+    NotificationDelivery,
     Organization,
     RecurringAvailabilityRule,
     TrainingEvent,
@@ -44,6 +47,7 @@ from .permissions import (
     require_organization_manager,
 )
 from .services import eligible_instructors_for_session
+from .notifications import notify_assignment, notify_event_update
 from .unit_staffing import sync_course_units, sync_event_units
 
 
@@ -411,7 +415,8 @@ def session_assignment_add(request, pk, session_pk):
     session = get_object_or_404(TrainingSession, pk=session_pk, event=event)
     form = InstructorAssignmentForm(request.POST, session=session)
     if form.is_valid():
-        form.save()
+        assignment = form.save()
+        notify_assignment(assignment)
         messages.success(request, "Instructor was assigned to this course unit.")
     else:
         error_text = " ".join(
@@ -433,7 +438,9 @@ def session_assignment_remove(request, pk, session_pk, assignment_pk):
         session__event=event,
     )
     instructor_name = assignment.instructor.full_name
+    assignment.session
     assignment.delete()
+    notify_assignment(assignment, removed=True)
     messages.success(request, f"{instructor_name} was removed from this course unit.")
     return redirect("training_detail", pk=event.pk)
 
@@ -474,6 +481,9 @@ def training_edit(request, pk):
         form = TrainingEventForm(request.POST, instance=event, managed_organizations=organizations)
         formset = TrainingSessionFormSet(request.POST, instance=event)
         if form.is_valid() and formset.is_valid():
+            details_changed = form.has_changed() or any(
+                session_form.has_changed() for session_form in formset.forms
+            )
             requires_complete_schedule = form.cleaned_data["status"] in (
                 TrainingEvent.Status.CONFIRMED,
                 TrainingEvent.Status.COMPLETED,
@@ -497,6 +507,8 @@ def training_edit(request, pk):
                 with transaction.atomic():
                     form.save()
                     formset.save()
+                    if details_changed:
+                        transaction.on_commit(lambda: notify_event_update(event))
                 messages.success(request, "Training and unit schedule were updated.")
                 return redirect("training_detail", pk=event.pk)
     else:
@@ -581,6 +593,55 @@ def instructor_authorizations(request, pk):
             "instructor": instructor,
             "form": form,
             "authorizations": authorizations,
+        },
+    )
+
+
+@login_required_unless_debug
+def instructor_notifications(request, pk):
+    instructor = get_object_or_404(
+        Instructor.objects.select_related("user", "home_organization"),
+        pk=pk,
+    )
+    can_edit = bool(
+        request.user.is_authenticated and instructor.user_id == request.user.id
+    )
+    can_view = can_edit or bool(
+        request.user.is_authenticated and request.user.is_superuser
+    )
+    if not can_view:
+        raise PermissionDenied(
+            "Only the instructor or a Site Administrator can view notification preferences."
+        )
+    if request.method == "POST" and not can_edit:
+        raise PermissionDenied("Only the instructor can change text-message consent.")
+    form = NotificationPreferenceForm(
+        request.POST or None,
+        instructor=instructor,
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Notification preferences were updated.")
+        return redirect("instructor_notifications", pk=instructor.pk)
+    deliveries = NotificationDelivery.objects.filter(instructor=instructor)[:20]
+    return render(
+        request,
+        "scheduling/instructor_notifications.html",
+        {
+            "instructor": instructor,
+            "form": form,
+            "can_edit": can_edit,
+            "deliveries": deliveries,
+            "preferences": form.preference,
+            "email_configured": settings.NOTIFICATION_EMAIL_ENABLED,
+            "sms_configured": bool(
+                settings.TWILIO_ACCOUNT_SID
+                and settings.TWILIO_AUTH_TOKEN
+                and (
+                    settings.TWILIO_MESSAGING_SERVICE_SID
+                    or settings.TWILIO_FROM_NUMBER
+                )
+            ),
         },
     )
 

@@ -16,6 +16,10 @@ from scheduling.models import (
     Instructor,
     TrainingEvent,
 )
+from scheduling.notifications import (
+    notify_account_approved,
+    notify_authorization_approved,
+)
 
 from .forms import (
     InstructorApplicationReviewForm,
@@ -249,6 +253,7 @@ def application_review(request, pk):
                 "verified_at": verified_at,
             },
         )
+    notify_account_approved(instructor)
     messages.success(request, f"{user.get_full_name() or user.email} was approved and can now sign in.")
     return redirect("user_list")
 
@@ -283,6 +288,7 @@ def authorization_approve(request, pk):
     authorization.verified_by = request.user
     authorization.verified_at = timezone.now()
     authorization.save(update_fields=("status", "verified_by", "verified_at"))
+    notify_authorization_approved(authorization)
     messages.success(
         request,
         f"{authorization.course.name} was approved for {authorization.instructor.full_name}.",

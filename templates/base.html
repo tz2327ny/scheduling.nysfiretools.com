@@ -27,6 +27,7 @@
         {% if user.is_authenticated and user.instructor_profile %}
         <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>
         <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
+        <a class="nav-item" href="{% url 'instructor_notifications' user.instructor_profile.pk %}"><span aria-hidden="true">✉</span> Notifications</a>
         {% endif %}
         {% if user.is_superuser %}
         <a class="nav-item {% if 'organization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'organization_list' %}"><span aria-hidden="true">⌂</span> Organizations</a>

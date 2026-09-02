@@ -9,6 +9,8 @@ from .models import (
     CourseUnit,
     Instructor,
     InstructorAssignment,
+    NotificationDelivery,
+    NotificationPreference,
     Organization,
     RecurringAvailabilityRule,
     TrainingEvent,
@@ -105,5 +107,7 @@ admin.site.register(RecurringAvailabilityRule)
 admin.site.register(AvailabilityBlock)
 admin.site.register(AssistanceRequest)
 admin.site.register(AuditEvent)
+admin.site.register(NotificationPreference)
+admin.site.register(NotificationDelivery)
 
 # Register your models here.

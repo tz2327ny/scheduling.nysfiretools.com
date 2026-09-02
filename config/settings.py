@@ -168,6 +168,18 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 )
 PASSWORD_RESET_TIMEOUT = int(os.environ.get("PASSWORD_RESET_TIMEOUT", "3600"))
 
+# Operational email and opt-in SMS notifications.
+SITE_BASE_URL = os.environ.get(
+    "SITE_BASE_URL", "https://scheduling.nysfiretools.com"
+).rstrip("/")
+NOTIFICATION_EMAIL_ENABLED = os.environ.get(
+    "NOTIFICATION_EMAIL_ENABLED", "true" if EMAIL_HOST else "false"
+).lower() == "true"
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_MESSAGING_SERVICE_SID = os.environ.get("TWILIO_MESSAGING_SERVICE_SID", "")
+TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "")
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_REDIRECT_EXEMPT = [r'^health/$']

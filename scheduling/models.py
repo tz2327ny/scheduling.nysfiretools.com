@@ -203,6 +203,24 @@ class CourseAuthorization(models.Model):
         return f"{self.instructor} — {self.course.record_number}"
 
 
+class NotificationPreference(models.Model):
+    instructor = models.OneToOneField(
+        Instructor,
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+    )
+    email_enabled = models.BooleanField(default=True)
+    sms_enabled = models.BooleanField(default=False)
+    assignment_updates = models.BooleanField(default=True)
+    schedule_updates = models.BooleanField(default=True)
+    sms_consented_at = models.DateTimeField(null=True, blank=True)
+    sms_opted_out_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.instructor} notification preferences"
+
+
 class TrainingEvent(models.Model):
     class Status(models.TextChoices):
         PROPOSED = "proposed", "Purposed"
@@ -617,5 +635,63 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+
+
+class NotificationDelivery(models.Model):
+    class Channel(models.TextChoices):
+        EMAIL = "email", "Email"
+        SMS = "sms", "Text message"
+
+    class Kind(models.TextChoices):
+        ASSIGNMENT = "assignment", "Instructor assignment"
+        ASSIGNMENT_REMOVED = "assignment_removed", "Assignment removed"
+        SCHEDULE_UPDATE = "schedule_update", "Schedule update"
+        CANCELLATION = "cancellation", "Training cancelled"
+        ACCOUNT_APPROVED = "account_approved", "Account approved"
+        AUTHORIZATION_APPROVED = "authorization_approved", "Authorization approved"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        SKIPPED = "skipped", "Skipped"
+
+    instructor = models.ForeignKey(
+        Instructor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_deliveries",
+    )
+    event = models.ForeignKey(
+        TrainingEvent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_deliveries",
+    )
+    session = models.ForeignKey(
+        TrainingSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notification_deliveries",
+    )
+    channel = models.CharField(max_length=12, choices=Channel.choices)
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    destination = models.CharField(max_length=254)
+    subject = models.CharField(max_length=200, blank=True)
+    body = models.TextField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    provider_message_id = models.CharField(max_length=100, blank=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.get_kind_display()} via {self.get_channel_display()} — {self.get_status_display()}"
 
 # Create your models here.

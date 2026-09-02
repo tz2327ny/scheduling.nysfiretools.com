@@ -1,6 +1,8 @@
 from datetime import date, datetime, time, timedelta
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -14,6 +16,8 @@ from scheduling.models import (
     CourseUnit,
     Instructor,
     InstructorAssignment,
+    NotificationDelivery,
+    NotificationPreference,
     Organization,
     RecurringAvailabilityRule,
     TrainingEvent,
@@ -21,6 +25,7 @@ from scheduling.models import (
 )
 from scheduling.permissions import can_manage_organization
 from scheduling.services import eligible_instructors_for_session
+from scheduling.notifications import notify_assignment
 from scheduling.unit_staffing import sync_event_units
 
 
@@ -382,6 +387,144 @@ class AuthenticationTests(TestCase):
     def test_anonymous_dashboard_redirects_to_login(self):
         response = self.client.get(reverse("dashboard"))
         self.assertRedirects(response, f"{reverse('login')}?next=/")
+
+
+class NotificationPreferenceTests(SchedulingTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = get_user_model().objects.create_user(
+            username="notices@example.com",
+            email="notices@example.com",
+            password="test-password",
+        )
+        self.instructor = self.make_instructor("Notice", self.jefferson)
+        self.instructor.user = self.user
+        self.instructor.email = self.user.email
+        self.instructor.save(update_fields=("user", "email"))
+        self.client.force_login(self.user)
+
+    @override_settings(DEBUG=False)
+    def test_instructor_must_confirm_consent_and_phone_to_enable_texts(self):
+        response = self.client.post(
+            reverse("instructor_notifications", args=(self.instructor.pk,)),
+            {
+                "email_enabled": "on",
+                "sms_enabled": "on",
+                "assignment_updates": "on",
+                "schedule_updates": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "phone",
+            "A mobile phone number is required for text notifications.",
+        )
+        self.assertFormError(
+            response.context["form"],
+            "sms_consent",
+            "Confirm text-message consent to opt in.",
+        )
+
+    @override_settings(DEBUG=False)
+    def test_instructor_can_opt_in_and_phone_is_normalized(self):
+        response = self.client.post(
+            reverse("instructor_notifications", args=(self.instructor.pk,)),
+            {
+                "email_enabled": "on",
+                "sms_enabled": "on",
+                "phone": "315-555-0199",
+                "assignment_updates": "on",
+                "schedule_updates": "on",
+                "sms_consent": "on",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("instructor_notifications", args=(self.instructor.pk,)),
+        )
+        self.instructor.refresh_from_db()
+        preference = NotificationPreference.objects.get(instructor=self.instructor)
+        self.assertEqual(self.instructor.phone, "+13155550199")
+        self.assertTrue(preference.sms_enabled)
+        self.assertIsNotNone(preference.sms_consented_at)
+
+    @override_settings(DEBUG=False)
+    def test_another_instructor_cannot_change_text_consent(self):
+        other_user = get_user_model().objects.create_user(
+            username="other.notices@example.com",
+            password="test-password",
+        )
+        other = self.make_instructor("OtherNotice", self.lewis)
+        other.user = other_user
+        other.save(update_fields=("user",))
+
+        response = self.client.post(
+            reverse("instructor_notifications", args=(other.pk,)),
+            {"sms_enabled": "on", "phone": "3155550199", "sms_consent": "on"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        NOTIFICATION_EMAIL_ENABLED=True,
+    )
+    def test_assignment_notification_is_emailed_and_logged(self):
+        assignment = InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=self.instructor,
+            role=InstructorAssignment.Role.ASSISTANT,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            notify_assignment(assignment)
+
+        delivery = NotificationDelivery.objects.get(
+            instructor=self.instructor,
+            channel=NotificationDelivery.Channel.EMAIL,
+        )
+        self.assertEqual(delivery.status, NotificationDelivery.Status.SENT)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.course.name, mail.outbox[0].body)
+
+    @override_settings(
+        NOTIFICATION_EMAIL_ENABLED=False,
+        TWILIO_ACCOUNT_SID="AC00000000000000000000000000000000",
+        TWILIO_AUTH_TOKEN="test-token",
+        TWILIO_MESSAGING_SERVICE_SID="MG00000000000000000000000000000000",
+        TWILIO_FROM_NUMBER="",
+    )
+    def test_opted_in_assignment_notification_uses_sms_provider(self):
+        self.instructor.phone = "+13155550199"
+        self.instructor.save(update_fields=("phone",))
+        NotificationPreference.objects.create(
+            instructor=self.instructor,
+            email_enabled=False,
+            sms_enabled=True,
+            assignment_updates=True,
+            sms_consented_at=timezone.now(),
+        )
+        assignment = InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=self.instructor,
+            role=InstructorAssignment.Role.ASSISTANT,
+        )
+        provider_response = MagicMock()
+        provider_response.__enter__.return_value = provider_response
+        provider_response.read.return_value = b'{"sid":"SM123"}'
+
+        with patch("scheduling.notifications.urlopen", return_value=provider_response), self.captureOnCommitCallbacks(execute=True):
+            notify_assignment(assignment)
+
+        delivery = NotificationDelivery.objects.get(
+            instructor=self.instructor,
+            channel=NotificationDelivery.Channel.SMS,
+        )
+        self.assertEqual(delivery.status, NotificationDelivery.Status.SENT)
+        self.assertEqual(delivery.provider_message_id, "SM123")
 
 
 class TrainingStatusTests(TestCase):

@@ -17,6 +17,9 @@ A standalone, statewide-ready course and instructor coordination system for part
 - Site Administrator management of participating counties and organizations
 - Case-insensitive unique account emails and duplicate-account consolidation
 - Self-service password recovery and Site Administrator password resets
+- Email notifications for instructor assignments, removals, schedule changes, cancellations, account approval, and authorization approval
+- Instructor-controlled notification preferences with explicit text-message consent
+- Twilio SMS delivery with auditable delivery history
 - Instructor travel preferences
 - Instructor-entered preferred, tentative, and unavailable time windows
 - Monday–Sunday availability view with visible daily time windows
@@ -51,6 +54,9 @@ Create a Railway project with an application service and PostgreSQL service. Con
 - `CSRF_TRUSTED_ORIGINS=https://scheduling.nysfiretools.com,https://<railway-generated-host>`
 - `DATABASE_URL` as a reference to the Railway PostgreSQL service
 - `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, and `DEFAULT_FROM_EMAIL` for password-reset email delivery
+- `NOTIFICATION_EMAIL_ENABLED=true` to enable operational email notices
+- `SITE_BASE_URL=https://scheduling.nysfiretools.com` for links in notifications
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM_NUMBER` for opt-in texts
 
 The included Dockerfile runs migrations and starts Gunicorn. The Railway health check uses `/health/`.
 

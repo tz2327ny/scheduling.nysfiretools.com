@@ -380,6 +380,21 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .match-choice-list label { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; border: 1px solid var(--slate-200); border-radius: 9px; background: #fbfcfd; color: var(--slate-700); font-size: 11px; font-weight: 650; line-height: 1.4; cursor: pointer; }
 .match-choice-list label:hover { border-color: var(--blue-600); background: #f4f9fc; }
 .match-choice-list input { flex: 0 0 auto; margin-top: 2px; }
+.notification-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, .6fr); align-items: start; gap: 16px; }
+.preference-list { display: grid; gap: 0; padding: 4px 20px 12px; }
+.preference-option { display: block; padding: 14px 0; border-bottom: 1px solid var(--slate-100); }
+.preference-option > span { display: flex; align-items: center; gap: 10px; }
+.preference-option input { width: 19px; height: 19px; }
+.preference-option strong { color: var(--navy-950); font-size: 12px; }
+.preference-option small { display: block; margin: 5px 0 0 29px; color: var(--slate-500); font-size: 9px; line-height: 1.5; }
+.preference-option em { display: block; margin: 5px 0 0 29px; color: var(--red-700); font-size: 9px; font-style: normal; }
+.preference-phone { padding: 14px 0; border-bottom: 1px solid var(--slate-100); }
+.consent-option { padding: 14px; border: 1px solid #cbdfea; border-radius: 9px; background: #edf6fb; }
+.consent-option small { color: #3c647c; }
+.notification-form-actions { display: flex; justify-content: flex-end; padding: 0 20px 20px; }
+.notification-status-panel { padding-bottom: 12px; }
+.notification-summary { padding: 0 20px; }
+.notification-table .data-row { grid-template-columns: minmax(200px, 1.3fr) 90px minmax(160px, 1fr) 150px 100px; }
 
 @media (max-width: 1050px) {
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -602,6 +617,15 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
   .approval-actions form, .approval-actions .button { width: 100%; }
   .match-review { padding: 15px; }
   .match-choice-list label { min-height: 48px; font-size: 12px; }
+  .notification-layout { grid-template-columns: 1fr; gap: 12px; }
+  .preference-list { padding: 4px 15px 12px; }
+  .preference-option { padding: 15px 0; }
+  .preference-option strong { font-size: 14px; }
+  .preference-option small, .preference-option em { font-size: 11px; }
+  .preference-phone input { min-height: 48px; font-size: 16px; }
+  .consent-option { padding: 14px; }
+  .notification-form-actions { padding: 0 15px 18px; }
+  .notification-form-actions .button { width: 100%; }
 }
 
 @media (max-width: 380px) {

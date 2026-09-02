@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Notification preferences · NYS Fire{% endblock %}
+{% block page_title %}Notification preferences{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <p>{{ instructor.full_name }} · Assignment, schedule-change, and cancellation notices.</p>
+</section>
+
+<div class="notification-layout">
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Delivery choices</p><h2>Email and text messages</h2><p>Text messages are always opt-in and can be turned off at any time.</p></div></div>
+    {% if can_edit %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="preference-list">
+        <label class="preference-option"><span>{{ form.email_enabled }}<strong>{{ form.email_enabled.label }}</strong></span><small>{{ form.email_enabled.help_text }}{% if instructor.email %} Current email: {{ instructor.email }}{% endif %}</small>{% for error in form.email_enabled.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        <label class="preference-option"><span>{{ form.assignment_updates }}<strong>{{ form.assignment_updates.label }}</strong></span><small>{{ form.assignment_updates.help_text }}</small>{% for error in form.assignment_updates.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        <label class="preference-option"><span>{{ form.schedule_updates }}<strong>{{ form.schedule_updates.label }}</strong></span><small>{{ form.schedule_updates.help_text }}</small>{% for error in form.schedule_updates.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        <label class="preference-option sms-option"><span>{{ form.sms_enabled }}<strong>{{ form.sms_enabled.label }}</strong></span><small>{{ form.sms_enabled.help_text }}</small>{% for error in form.sms_enabled.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        <label class="field preference-phone"><span>{{ form.phone.label }}</span>{{ form.phone }}<small>{{ form.phone.help_text }}</small>{% for error in form.phone.errors %}<em>{{ error }}</em>{% endfor %}</label>
+        <label class="preference-option consent-option"><span>{{ form.sms_consent }}<strong>{{ form.sms_consent.label }}</strong></span><small>{{ form.sms_consent.help_text }}</small>{% for error in form.sms_consent.errors %}<em>{{ error }}</em>{% endfor %}</label>
+      </div>
+      <div class="notification-form-actions"><button class="button primary" type="submit">Save notification preferences</button></div>
+    </form>
+    {% else %}
+    <dl class="detail-list notification-summary"><div><dt>Email</dt><dd>{% if preferences.email_enabled %}Enabled{% else %}Off{% endif %}</dd></div><div><dt>Text messages</dt><dd>{% if preferences.sms_enabled %}Opted in{% else %}Off{% endif %}</dd></div><div><dt>Assignment updates</dt><dd>{% if preferences.assignment_updates %}Enabled{% else %}Off{% endif %}</dd></div><div><dt>Schedule updates</dt><dd>{% if preferences.schedule_updates %}Enabled{% else %}Off{% endif %}</dd></div></dl>
+    <div class="notice-card"><span class="notice-icon">i</span><p><strong>Consent is instructor-controlled</strong>Only the instructor can enable or disable text messages from their signed-in account.</p></div>
+    {% endif %}
+  </section>
+
+  <aside class="panel notification-status-panel">
+    <div class="panel-header compact"><div><p class="eyebrow">Delivery status</p><h2>System readiness</h2></div></div>
+    <dl class="detail-list notification-summary"><div><dt>Email service</dt><dd><i class="status {% if email_configured %}available{% else %}tentative{% endif %}">{% if email_configured %}Configured{% else %}Setup needed{% endif %}</i></dd></div><div><dt>Text service</dt><dd><i class="status {% if sms_configured %}available{% else %}tentative{% endif %}">{% if sms_configured %}Configured{% else %}Setup needed{% endif %}</i></dd></div></dl>
+  </aside>
+</div>
+
+<div class="section-heading"><div><p class="eyebrow">Delivery history</p><h2>Recent notifications</h2></div></div>
+<section class="panel table-panel">
+  <div class="data-table notification-table" role="table" aria-label="Recent notification delivery history">
+    <div class="data-row data-head" role="row"><span>Notice</span><span>Channel</span><span>Destination</span><span>Created</span><span>Status</span></div>
+    {% for delivery in deliveries %}
+    <div class="data-row" role="row"><span data-label="Notice"><strong>{{ delivery.get_kind_display }}</strong><small>{{ delivery.subject|default:"Operational notification" }}</small></span><span data-label="Channel">{{ delivery.get_channel_display }}</span><span data-label="Destination">{{ delivery.destination }}</span><span data-label="Created">{{ delivery.created_at|date:"M j, Y · g:i A" }}</span><span data-label="Status"><i class="status {% if delivery.status == 'sent' %}available{% elif delivery.status == 'failed' %}unavailable{% elif delivery.status == 'skipped' %}inactive{% else %}tentative{% endif %}">{{ delivery.get_status_display }}</i>{% if delivery.error_message %}<small>{{ delivery.error_message }}</small>{% endif %}</span></div>
+    {% empty %}<div class="empty-state"><strong>No notifications yet.</strong><p>Assignment and schedule notices will appear here after they are created.</p></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}
