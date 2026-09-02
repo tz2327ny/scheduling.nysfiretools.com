@@ -45,7 +45,7 @@
           {% if user.is_authenticated %}
           <div class="user-chip">
             <span class="avatar">{{ user.first_name|first|default:"U" }}{{ user.last_name|first }}</span>
-            <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}State administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
+            <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}Site administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
           </div>
           <div class="account-actions">
             {% if user.is_superuser %}<a class="text-link" href="{% url 'user_list' %}">Users</a>{% endif %}

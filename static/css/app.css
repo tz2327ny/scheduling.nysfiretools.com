@@ -374,6 +374,12 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .authorization-status-row strong { font-size: 11px; }
 .authorization-status-row small { margin-top: 3px; color: var(--slate-500); font-size: 9px; }
 .authorization-status-row .status { flex: 0 0 auto; font-style: normal; }
+.match-review { padding: 18px 20px; border-top: 1px solid var(--slate-100); }
+.match-review > .notice-card { margin: 10px 0 14px; }
+.match-choice-list > div { display: grid; gap: 8px; }
+.match-choice-list label { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; border: 1px solid var(--slate-200); border-radius: 9px; background: #fbfcfd; color: var(--slate-700); font-size: 11px; font-weight: 650; line-height: 1.4; cursor: pointer; }
+.match-choice-list label:hover { border-color: var(--blue-600); background: #f4f9fc; }
+.match-choice-list input { flex: 0 0 auto; margin-top: 2px; }
 
 @media (max-width: 1050px) {
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -594,6 +600,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
   .approval-row > span small { font-size: 10px; }
   .approval-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .approval-actions form, .approval-actions .button { width: 100%; }
+  .match-review { padding: 15px; }
+  .match-choice-list label { min-height: 48px; font-size: 12px; }
 }
 
 @media (max-width: 380px) {

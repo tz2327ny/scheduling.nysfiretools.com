@@ -56,9 +56,9 @@ class CourseAuthorizationInline(admin.TabularInline):
 
 @admin.register(Instructor)
 class InstructorAdmin(admin.ModelAdmin):
-    list_display = ("last_name", "first_name", "home_organization", "travel_preference", "active")
+    list_display = ("last_name", "first_name", "sfi_number", "home_organization", "travel_preference", "active")
     list_filter = ("home_organization", "travel_preference", "active")
-    search_fields = ("first_name", "last_name", "email")
+    search_fields = ("first_name", "last_name", "sfi_number", "email")
     inlines = (CourseAuthorizationInline,)
 
 

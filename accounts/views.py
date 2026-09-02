@@ -9,15 +9,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from scheduling.models import CourseAuthorization, Instructor
+from scheduling.models import (
+    AssistanceRequest,
+    AuditEvent,
+    CourseAuthorization,
+    Instructor,
+    TrainingEvent,
+)
 
 from .forms import (
     InstructorApplicationReviewForm,
     InstructorRegistrationForm,
     StatePasswordResetForm,
+    StateUserCreateForm,
     StateUserForm,
 )
-from .models import InstructorApplication
+from .models import InstructorApplication, UserOrganizationRole
 
 
 def state_admin_required(view_func):
@@ -25,10 +32,46 @@ def state_admin_required(view_func):
     @login_required
     def wrapped(request, *args, **kwargs):
         if not request.user.is_superuser:
-            raise PermissionDenied("Only a State administrator can manage users.")
+            raise PermissionDenied("Only a Site Administrator can manage users.")
         return view_func(request, *args, **kwargs)
 
     return wrapped
+
+
+def merge_existing_login_into_applicant(existing_user, applicant_user, application):
+    """Consolidate access/history into the newly registered login."""
+    applicant_user.groups.add(*existing_user.groups.all())
+    applicant_user.user_permissions.add(*existing_user.user_permissions.all())
+    applicant_user.is_superuser = applicant_user.is_superuser or existing_user.is_superuser
+    applicant_user.is_staff = applicant_user.is_superuser
+    applicant_user.save(update_fields=("is_superuser", "is_staff"))
+
+    for role in existing_user.organization_roles.all():
+        UserOrganizationRole.objects.get_or_create(
+            user=applicant_user,
+            organization=role.organization,
+            role=role.role,
+        )
+
+    old_application = InstructorApplication.objects.filter(user=existing_user).first()
+    if old_application and old_application.pk != application.pk:
+        application.requested_courses.add(*old_application.requested_courses.all())
+        old_application.delete()
+
+    CourseAuthorization.objects.filter(verified_by=existing_user).update(
+        verified_by=applicant_user
+    )
+    TrainingEvent.objects.filter(created_by=existing_user).update(
+        created_by=applicant_user
+    )
+    AssistanceRequest.objects.filter(created_by=existing_user).update(
+        created_by=applicant_user
+    )
+    AuditEvent.objects.filter(actor=existing_user).update(actor=applicant_user)
+    InstructorApplication.objects.filter(reviewed_by=existing_user).update(
+        reviewed_by=applicant_user
+    )
+    existing_user.delete()
 
 
 def instructor_register(request):
@@ -41,6 +84,7 @@ def instructor_register(request):
                 user = form.save()
                 application = InstructorApplication.objects.create(
                     user=user,
+                    sfi_number=form.cleaned_data["sfi_number"],
                     phone=form.cleaned_data["phone"],
                     home_organization=form.cleaned_data["home_organization"],
                     travel_preference=form.cleaned_data["travel_preference"],
@@ -83,6 +127,24 @@ def user_list(request):
             "pending_applications": pending_applications,
             "pending_authorizations": pending_authorizations,
         },
+    )
+
+
+@state_admin_required
+def user_create(request):
+    form = StateUserCreateForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            user = form.save_with_roles()
+        messages.success(
+            request,
+            f"{user.get_full_name() or user.email} can now sign in.",
+        )
+        return redirect("user_list")
+    return render(
+        request,
+        "accounts/user_form.html",
+        {"form": form, "is_create": True},
     )
 
 
@@ -136,16 +198,31 @@ def application_review(request, pk):
         return render(
             request,
             "accounts/application_review.html",
-            {"application": application, "form": form},
+            {
+                "application": application,
+                "form": form,
+                "matching_instructors": form.matching_instructors,
+            },
         )
 
     user = application.user
-    instructor = Instructor.objects.filter(email__iexact=user.email, user__isnull=True).first()
-    if instructor is None:
+    instructor_match = form.cleaned_data["instructor_match"]
+    if instructor_match == "new":
         instructor = Instructor()
+    else:
+        instructor = get_object_or_404(
+            Instructor.objects.select_for_update(),
+            pk=int(instructor_match),
+        )
+        if instructor.user_id and instructor.user_id != user.pk:
+            existing_user = instructor.user
+            instructor.user = None
+            instructor.save(update_fields=("user",))
+            merge_existing_login_into_applicant(existing_user, user, application)
     instructor.user = user
     instructor.first_name = user.first_name
     instructor.last_name = user.last_name
+    instructor.sfi_number = application.sfi_number
     instructor.email = user.email
     instructor.phone = application.phone
     instructor.home_organization = application.home_organization

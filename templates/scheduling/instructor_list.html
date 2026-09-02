@@ -26,7 +26,7 @@
     </div>
     {% for instructor in instructors %}
     <div class="data-row" role="row">
-      <span class="person-cell" data-label="Instructor"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}</strong><small>{{ instructor.email|default:"No email entered" }}</small></span></span>
+      <span class="person-cell" data-label="Instructor"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}</strong><small>{% if instructor.sfi_number %}SFI {{ instructor.sfi_number }} · {% endif %}{{ instructor.email|default:"No email entered" }}{% if not instructor.user_id %} · No login account{% endif %}</small></span></span>
       <span data-label="Assignment">{{ instructor.home_organization.short_name }}{% if instructor.is_regional %}<small>Academy instructor</small>{% endif %}</span>
       <span data-label="Travel">{{ instructor.get_travel_preference_display }}</span>
       <span data-label="Authorizations">{{ instructor.authorization_count }}</span>

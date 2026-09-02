@@ -562,7 +562,7 @@ def instructor_authorizations(request, pk):
     if not request.user.is_authenticated or (
         not request.user.is_superuser and instructor.user_id != request.user.id
     ):
-        raise PermissionDenied("Only the instructor or a State administrator can view these authorizations.")
+        raise PermissionDenied("Only the instructor or a Site Administrator can view these authorizations.")
     form = InstructorAuthorizationRequestForm(
         request.POST or None,
         instructor=instructor,

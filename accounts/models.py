@@ -50,6 +50,7 @@ class InstructorApplication(models.Model):
         on_delete=models.CASCADE,
         related_name="instructor_application",
     )
+    sfi_number = models.CharField("SFI number", max_length=30, blank=True)
     phone = models.CharField(max_length=30, blank=True)
     home_organization = models.ForeignKey(
         "scheduling.Organization",

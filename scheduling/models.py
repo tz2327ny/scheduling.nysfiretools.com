@@ -119,6 +119,7 @@ class Instructor(models.Model):
     )
     first_name = models.CharField(max_length=80)
     last_name = models.CharField(max_length=80)
+    sfi_number = models.CharField("SFI number", max_length=30, blank=True, db_index=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
     home_organization = models.ForeignKey(

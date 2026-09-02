@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
 
-{% block title %}Manage {{ managed_user.email|default:managed_user.username }} · NYS Fire{% endblock %}
-{% block page_title %}Manage user{% endblock %}
+{% block title %}{% if is_create %}Create login account{% else %}Manage {{ managed_user.email|default:managed_user.username }}{% endif %} · NYS Fire{% endblock %}
+{% block page_title %}{% if is_create %}Create login account{% else %}Manage user{% endif %}{% endblock %}
 
 {% block content %}
 <form class="form-shell narrow" method="post" novalidate>
   {% csrf_token %}
   <section class="panel form-panel">
-    <div class="panel-header"><div><p class="eyebrow">User access</p><h2>{{ managed_user.get_full_name|default:managed_user.username }}</h2></div></div>
+    <div class="panel-header"><div><p class="eyebrow">User access</p><h2>{% if is_create %}New login account{% else %}{{ managed_user.get_full_name|default:managed_user.username }}{% endif %}</h2><p>{% if is_create %}Create a login for a Site Administrator, organization administrator, or an instructor already in the directory.{% else %}Login access and instructor-directory status are managed separately. Leave the instructor profile blank for an administrator-only account.{% endif %}</p></div></div>
     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
     <div class="form-grid">
       {% for field in form %}
-      <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% endif %}">
+      <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% elif field.name == 'instructor_profile' %}wide{% endif %}">
         <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
       </label>
       {% endfor %}
     </div>
   </section>
-  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a><a class="button secondary" href="{% url 'user_password_reset' managed_user.pk %}">Reset password</a><button class="button primary" type="submit">Save user access</button></div>
+  <div class="form-actions"><a class="button secondary" href="{% url 'user_list' %}">Cancel</a>{% if not is_create %}<a class="button secondary" href="{% url 'user_password_reset' managed_user.pk %}">Reset password</a>{% endif %}<button class="button primary" type="submit">{% if is_create %}Create account{% else %}Save user access{% endif %}</button></div>
 </form>
 {% endblock %}

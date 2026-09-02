@@ -5,7 +5,11 @@
 
 {% block content %}
 <section class="page-actions">
-  <p>State administrators approve instructor registrations and control account access.</p>
+  <p>Site administrators approve registrations and control login access. Instructor directory records can exist without login accounts.</p>
+  <div class="toolbar-actions">
+    <a class="button secondary" href="{% url 'instructor_create' %}">Add scheduling-only instructor</a>
+    <a class="button primary" href="{% url 'user_create' %}">＋ Create login account</a>
+  </div>
 </section>
 
 <section class="panel approval-panel">
@@ -49,7 +53,7 @@
     {% for account in users %}
     <div class="data-row" role="row">
       <span data-label="User"><strong>{{ account.get_full_name|default:account.username }}</strong><small>{{ account.email|default:account.username }}</small></span>
-      <span data-label="Access">{% if account.is_superuser %}State administrator{% elif account.instructor_profile %}Instructor{% elif account.organization_roles.all %}Organization administrator{% else %}User{% endif %}</span>
+      <span data-label="Access">{% if account.is_superuser %}Site administrator{% elif account.instructor_profile %}Instructor{% elif account.organization_roles.all %}Organization administrator{% else %}User{% endif %}</span>
       <span data-label="Assignment">{% if account.instructor_profile %}{{ account.instructor_profile.home_organization.short_name }}{% else %}{% for role in account.organization_roles.all %}{{ role.organization.short_name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}{% endif %}</span>
       <span data-label="Status">{% if account.instructor_application.status == 'pending' %}<i class="status tentative">Pending</i>{% elif account.instructor_application.status == 'rejected' %}<i class="status unavailable">Not approved</i>{% elif account.is_active %}<i class="status available">Enabled</i>{% else %}<i class="status inactive">Disabled</i>{% endif %}</span>
       <span class="table-actions" data-label="Actions"><a class="text-link" href="{% url 'user_edit' account.pk %}">Manage</a><a class="text-link" href="{% url 'user_password_reset' account.pk %}">Reset password</a></span>

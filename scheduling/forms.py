@@ -279,6 +279,7 @@ class InstructorForm(forms.ModelForm):
         fields = (
             "first_name",
             "last_name",
+            "sfi_number",
             "email",
             "phone",
             "home_organization",

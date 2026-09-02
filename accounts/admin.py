@@ -12,8 +12,8 @@ class UserOrganizationRoleAdmin(admin.ModelAdmin):
 
 @admin.register(InstructorApplication)
 class InstructorApplicationAdmin(admin.ModelAdmin):
-    list_display = ("user", "home_organization", "status", "applied_at", "reviewed_by")
+    list_display = ("user", "sfi_number", "home_organization", "status", "applied_at", "reviewed_by")
     list_filter = ("status", "home_organization")
-    search_fields = ("user__first_name", "user__last_name", "user__email")
+    search_fields = ("user__first_name", "user__last_name", "user__email", "sfi_number")
 
 # Register your models here.

@@ -4,7 +4,7 @@
 {% block page_title %}My course authorizations{% endblock %}
 
 {% block content %}
-<section class="page-actions"><p>Active authorizations are used to match you with courses. New claims remain pending until verified by a State administrator.</p></section>
+<section class="page-actions"><p>Active authorizations are used to match you with courses. New claims remain pending until verified by a Site Administrator.</p></section>
 
 <section class="panel authorization-status-panel">
   <div class="panel-header"><div><p class="eyebrow">Verified record</p><h2>Current and pending authorizations</h2></div></div>
@@ -26,7 +26,7 @@
       <small>{{ form.courses.help_text }}</small>{% for error in form.courses.errors %}<em>{{ error }}</em>{% endfor %}
     </div>
   </section>
-  <div class="form-actions"><button class="button primary" type="submit">Submit selections for State approval</button></div>
+  <div class="form-actions"><button class="button primary" type="submit">Submit selections for approval</button></div>
 </form>
 {% endblock %}
 

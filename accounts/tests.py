@@ -39,6 +39,7 @@ class InstructorAccountWorkflowTests(TestCase):
             "first_name": "New",
             "last_name": "Instructor",
             "email": email,
+            "sfi_number": "SFI-12345",
             "phone": "315-555-0123",
             "home_organization": self.jefferson.pk,
             "travel_preference": Instructor.TravelPreference.LIMITED,
@@ -57,6 +58,7 @@ class InstructorAccountWorkflowTests(TestCase):
         application = self.create_pending_application()
 
         self.assertEqual(application.status, InstructorApplication.Status.PENDING)
+        self.assertEqual(application.sfi_number, "SFI-12345")
         self.assertEqual(application.home_organization, self.jefferson)
         self.assertEqual(application.get_travel_preference_display(), "Limited travel")
         self.assertEqual(
@@ -81,6 +83,16 @@ class InstructorAccountWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "An account already exists for this email address.")
+        self.assertFalse(InstructorApplication.objects.exists())
+
+    def test_registration_requires_sfi_number(self):
+        payload = self.registration_payload()
+        payload["sfi_number"] = ""
+
+        response = self.client.post(reverse("instructor_register"), payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context["form"], "sfi_number", "This field is required.")
         self.assertFalse(InstructorApplication.objects.exists())
 
     def test_database_rejects_case_insensitive_duplicate_email(self):
@@ -145,6 +157,7 @@ class InstructorAccountWorkflowTests(TestCase):
         existing = Instructor.objects.create(
             first_name="Existing",
             last_name="Record",
+            sfi_number="SFI-12345",
             email="new.instructor@example.com",
             home_organization=self.academy,
         )
@@ -153,7 +166,10 @@ class InstructorAccountWorkflowTests(TestCase):
 
         self.client.post(
             reverse("application_review", args=[application.pk]),
-            {"approved_courses": [self.course.pk]},
+            {
+                "instructor_match": str(existing.pk),
+                "approved_courses": [self.course.pk],
+            },
         )
 
         existing.refresh_from_db()
@@ -161,7 +177,99 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertEqual(application.instructor_id, existing.pk)
         self.assertEqual(existing.user_id, application.user_id)
         self.assertEqual(existing.first_name, "New")
+        self.assertEqual(existing.sfi_number, "SFI-12345")
         self.assertEqual(existing.home_organization, self.jefferson)
+
+    def test_possible_match_requires_explicit_merge_decision(self):
+        existing = Instructor.objects.create(
+            first_name="New",
+            last_name="Instructor",
+            sfi_number="SFI-12345",
+            home_organization=self.academy,
+        )
+        application = self.create_pending_application()
+        self.client.force_login(self.state_admin)
+
+        review_page = self.client.get(reverse("application_review", args=[application.pk]))
+        self.assertContains(review_page, "Possible existing instructor found")
+        self.assertContains(review_page, existing.sfi_number)
+        response = self.client.post(
+            reverse("application_review", args=[application.pk]),
+            {"approved_courses": [self.course.pk]},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(
+            response.context["form"],
+            "instructor_match",
+            "This field is required.",
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.status, InstructorApplication.Status.PENDING)
+        self.assertIsNone(existing.user_id)
+
+    def test_review_flags_a_similar_name_even_when_identifiers_differ(self):
+        existing = Instructor.objects.create(
+            first_name="New",
+            last_name="Instructer",
+            sfi_number="DIFFERENT-SFI",
+            email="different@example.com",
+            home_organization=self.academy,
+        )
+        application = self.create_pending_application()
+        self.client.force_login(self.state_admin)
+
+        response = self.client.get(reverse("application_review", args=[application.pk]))
+
+        self.assertContains(response, "Possible existing instructor found")
+        self.assertContains(response, existing.email)
+
+    def test_approval_merges_an_existing_login_and_preserves_access(self):
+        old_user = User.objects.create_user(
+            username="old.instructor@example.com",
+            email="old.instructor@example.com",
+            password=self.password,
+            first_name="New",
+            last_name="Instructor",
+        )
+        existing = Instructor.objects.create(
+            user=old_user,
+            first_name="New",
+            last_name="Instructor",
+            sfi_number="SFI-12345",
+            email=old_user.email,
+            home_organization=self.academy,
+        )
+        UserOrganizationRole.objects.create(
+            user=old_user,
+            organization=self.academy,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+        application = self.create_pending_application()
+        applicant_id = application.user_id
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("application_review", args=[application.pk]),
+            {
+                "instructor_match": str(existing.pk),
+                "approved_courses": [self.course.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        existing.refresh_from_db()
+        application.refresh_from_db()
+        self.assertEqual(existing.user_id, applicant_id)
+        self.assertEqual(application.instructor_id, existing.pk)
+        self.assertFalse(User.objects.filter(pk=old_user.pk).exists())
+        self.assertTrue(
+            UserOrganizationRole.objects.filter(
+                user_id=applicant_id,
+                organization=self.academy,
+                role=UserOrganizationRole.Role.ADMINISTRATOR,
+            ).exists()
+        )
 
     def test_non_state_admin_cannot_review_applications(self):
         application = self.create_pending_application()
@@ -256,6 +364,56 @@ class InstructorAccountWorkflowTests(TestCase):
             ).exists()
         )
 
+    def test_site_admin_can_unlink_own_instructor_profile_without_deleting_it(self):
+        instructor = Instructor.objects.create(
+            user=self.state_admin,
+            first_name=self.state_admin.first_name,
+            last_name=self.state_admin.last_name,
+            sfi_number="SFI-ADMIN",
+            email=self.state_admin.email,
+            home_organization=self.jefferson,
+        )
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("user_edit", args=[self.state_admin.pk]),
+            {
+                "first_name": self.state_admin.first_name,
+                "last_name": self.state_admin.last_name,
+                "email": self.state_admin.email,
+                "is_active": "on",
+                "is_superuser": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        instructor.refresh_from_db()
+        self.assertIsNone(instructor.user_id)
+        self.assertFalse(instructor.active)
+        self.assertTrue(Instructor.objects.filter(pk=instructor.pk).exists())
+
+    def test_site_admin_can_create_administrator_only_login(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("user_create"),
+            {
+                "first_name": "Login",
+                "last_name": "Only",
+                "email": "login.only@example.com",
+                "password1": self.password,
+                "password2": self.password,
+                "is_active": "on",
+                "is_superuser": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        created = User.objects.get(email="login.only@example.com")
+        self.assertTrue(created.is_superuser)
+        self.assertTrue(created.is_active)
+        self.assertFalse(Instructor.objects.filter(user=created).exists())
+
     def test_state_admin_can_reset_user_password(self):
         managed_user = User.objects.create_user(
             username="reset.user@example.com",
@@ -321,7 +479,7 @@ class InstructorAccountWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "You cannot disable your own account.")
-        self.assertContains(response, "You cannot remove your own State administrator access.")
+        self.assertContains(response, "You cannot remove your own Site Administrator access.")
         self.state_admin.refresh_from_db()
         self.assertTrue(self.state_admin.is_active)
         self.assertTrue(self.state_admin.is_superuser)

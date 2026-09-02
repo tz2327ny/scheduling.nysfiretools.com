@@ -7,7 +7,7 @@
 <form class="form-shell narrow" method="post" novalidate>
   {% csrf_token %}
   <section class="panel form-panel">
-    <div class="panel-header"><div><p class="eyebrow">Instructor profile</p><h2>Assignment and contact information</h2></div></div>
+    <div class="panel-header"><div><p class="eyebrow">Instructor profile</p><h2>Assignment and contact information</h2><p>This directory record can be scheduled without a login account. If the instructor registers later, a Site Administrator can link the application to this record without losing staffing history.</p></div></div>
     <div class="form-grid">
       {% for field in form %}
       <label class="field {% if field.name == 'travel_notes' %}wide{% endif %}">

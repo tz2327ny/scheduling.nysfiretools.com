@@ -354,6 +354,28 @@ class CountyPermissionTests(SchedulingTestCase):
         self.assertEqual(own_response.status_code, 200)
         self.assertEqual(other_response.status_code, 403)
 
+    @override_settings(DEBUG=False)
+    def test_admin_can_create_scheduling_only_instructor_without_sfi_number(self):
+        response = self.client.post(
+            reverse("instructor_create"),
+            {
+                "first_name": "Schedule",
+                "last_name": "Only",
+                "sfi_number": "",
+                "email": "schedule.only@example.com",
+                "phone": "",
+                "home_organization": self.jefferson.pk,
+                "travel_preference": Instructor.TravelPreference.CONTACT_ME,
+                "travel_notes": "",
+                "active": "on",
+            },
+        )
+
+        self.assertRedirects(response, reverse("instructor_list"))
+        instructor = Instructor.objects.get(email="schedule.only@example.com")
+        self.assertEqual(instructor.sfi_number, "")
+        self.assertIsNone(instructor.user_id)
+
 
 class AuthenticationTests(TestCase):
     @override_settings(DEBUG=False)

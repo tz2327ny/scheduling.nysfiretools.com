@@ -8,12 +8,15 @@ A standalone, statewide-ready course and instructor coordination system for part
 - Course library with a persistent Course Record Number and instructor staffing requirements
 - County and Academy instructor directory
 - Course-specific instructor authorizations
-- Instructor self-registration with State Admin account approval
+- Instructor self-registration with Site Administrator account approval
+- Required SFI number during self-registration, optional for administrator-created records
+- Possible-profile matching and explicit merge during application approval
+- Login-only Site Administrator accounts and scheduling-only instructor records
 - Instructor-submitted course authorization claims with State verification
 - Statewide user management and county/organization administrator assignments
-- State administrator management of participating counties and organizations
+- Site Administrator management of participating counties and organizations
 - Case-insensitive unique account emails and duplicate-account consolidation
-- Self-service password recovery and State administrator password resets
+- Self-service password recovery and Site Administrator password resets
 - Instructor travel preferences
 - Instructor-entered preferred, tentative, and unavailable time windows
 - Monday–Sunday availability view with visible daily time windows
