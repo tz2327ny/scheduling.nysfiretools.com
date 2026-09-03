@@ -1,4 +1,6 @@
 import json
+from datetime import timedelta
+from urllib.parse import parse_qs, urlparse
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -6,13 +8,119 @@ from django.core import mail
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
 
-from .models import InstructorApplication, UserOrganizationRole
+from .models import ExternalAccessCode, InstructorApplication, UserOrganizationRole
 
 
 User = get_user_model()
+
+
+@override_settings(
+    NYSFIRETOOLS_MAIN_ORIGIN="https://www.nysfiretools.com",
+    NYSFIRETOOLS_SSO_CLIENT_SECRET="test-shared-secret-with-sufficient-length",
+)
+class NysfiretoolsSingleSignOnTests(TestCase):
+    def setUp(self):
+        self.organization = Organization.objects.get(name="Jefferson County")
+        self.user = User.objects.create_user(
+            username="linked.instructor@example.com",
+            email="linked.instructor@example.com",
+            password="TestAccess!23456",
+            first_name="Linked",
+            last_name="Instructor",
+            is_active=True,
+        )
+        Instructor.objects.create(
+            user=self.user,
+            first_name="Linked",
+            last_name="Instructor",
+            email=self.user.email,
+            home_organization=self.organization,
+        )
+
+    def issue_code(self, return_to="/site-plan-builder"):
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("nysfiretools_sso_authorize"),
+            {"return_to": return_to, "state": "browser-state-value-123456789"},
+        )
+        self.assertEqual(response.status_code, 302)
+        parsed = urlparse(response["Location"])
+        self.assertEqual(f"{parsed.scheme}://{parsed.netloc}", "https://www.nysfiretools.com")
+        self.assertEqual(parsed.path, "/burn-plans/sso/callback")
+        self.assertEqual(parse_qs(parsed.query)["state"][0], "browser-state-value-123456789")
+        return parse_qs(parsed.query)["code"][0]
+
+    def exchange_code(self, code, secret="test-shared-secret-with-sufficient-length"):
+        return self.client.post(
+            reverse("nysfiretools_sso_token"),
+            {"code": code},
+            HTTP_X_NYSFIRETOOLS_SSO_SECRET=secret,
+        )
+
+    def test_scheduler_login_is_required_before_issuing_code(self):
+        response = self.client.get(
+            reverse("nysfiretools_sso_authorize"),
+            {"return_to": "/burn-plans", "state": "browser-state-value-123456789"},
+        )
+        self.assertEqual(response.status_code, 302)
+        parsed = urlparse(response["Location"])
+        self.assertEqual(parsed.path, reverse("login"))
+        self.assertIn(reverse("nysfiretools_sso_authorize"), parse_qs(parsed.query)["next"][0])
+
+    def test_authorize_rejects_missing_browser_state(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("nysfiretools_sso_authorize"))
+        self.assertEqual(response.status_code, 400)
+
+    def test_code_exchanges_once_for_active_scheduler_identity(self):
+        code = self.issue_code()
+
+        response = self.exchange_code(code)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "sub": str(self.user.pk),
+                "email": "linked.instructor@example.com",
+                "name": "Linked Instructor",
+                "agency": "Jefferson County",
+                "role": "viewer",
+                "return_to": "/site-plan-builder",
+            },
+        )
+        self.assertEqual(self.exchange_code(code).status_code, 400)
+
+    def test_invalid_client_does_not_consume_code_and_unsafe_return_is_rejected(self):
+        code = self.issue_code("//untrusted.example/path")
+
+        self.assertEqual(self.exchange_code(code, "wrong-secret").status_code, 401)
+        response = self.exchange_code(code)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["return_to"], "/burn-plans")
+
+    def test_expired_code_and_inactive_user_are_rejected(self):
+        expired_code = self.issue_code()
+        ExternalAccessCode.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+        self.assertEqual(self.exchange_code(expired_code).status_code, 400)
+
+        active_code = self.issue_code()
+        self.user.is_active = False
+        self.user.save(update_fields=("is_active",))
+        self.assertEqual(self.exchange_code(active_code).status_code, 400)
+
+    def test_scheduler_superuser_maps_to_nysfiretools_admin(self):
+        self.user.is_superuser = True
+        self.user.is_staff = True
+        self.user.save(update_fields=("is_superuser", "is_staff"))
+        response = self.exchange_code(self.issue_code("/supporters/admin"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["role"], "admin")
 
 
 class CloudflareEmailBackendTests(TestCase):

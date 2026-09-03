@@ -10,7 +10,7 @@
     <div class="panel-header"><div><p class="eyebrow">State approval</p><h2>{{ application.user.get_full_name|default:application.user.email }}</h2></div><span class="status tentative">Pending</span></div>
     <dl class="review-summary">
       <div><dt>Email</dt><dd>{{ application.user.email }}</dd></div>
-      <div><dt>SFI number</dt><dd>{{ application.sfi_number }}</dd></div>
+      <div><dt>SFI, CFI, or MFI number</dt><dd>{{ application.sfi_number }}</dd></div>
       <div><dt>Phone</dt><dd>{{ application.phone|default:"Not supplied" }}</dd></div>
       <div><dt>Assignment</dt><dd>{{ application.home_organization.name }}</dd></div>
       <div><dt>Travel</dt><dd>{{ application.get_travel_preference_display }}</dd></div>
@@ -19,7 +19,7 @@
     {% if matching_instructors %}
     <div class="match-review field">
       <span>{{ form.instructor_match.label }}</span>
-      <div class="notice-card"><span class="notice-icon">?</span><p><strong>Possible existing instructor found</strong>Compare the SFI number, email, name, and organization. Linking preserves assignments, availability, and authorizations. If that profile already has a login, its access and history will be merged into the newly registered account.</p></div>
+      <div class="notice-card"><span class="notice-icon">?</span><p><strong>Possible existing instructor found</strong>Compare the SFI, CFI, or MFI number, email, name, and organization. Linking preserves assignments, availability, and authorizations. If that profile already has a login, its access and history will be merged into the newly registered account.</p></div>
       <div class="match-choice-list">{{ form.instructor_match }}</div>
       {% for error in form.instructor_match.errors %}<em>{{ error }}</em>{% endfor %}
     </div>

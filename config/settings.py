@@ -181,6 +181,12 @@ CLOUDFLARE_EMAIL_TIMEOUT = int(os.environ.get("CLOUDFLARE_EMAIL_TIMEOUT", "10"))
 SITE_BASE_URL = os.environ.get(
     "SITE_BASE_URL", "https://scheduling.nysfiretools.com"
 ).rstrip("/")
+NYSFIRETOOLS_MAIN_ORIGIN = os.environ.get(
+    "NYSFIRETOOLS_MAIN_ORIGIN", "https://www.nysfiretools.com"
+).rstrip("/")
+NYSFIRETOOLS_SSO_CLIENT_SECRET = os.environ.get(
+    "NYSFIRETOOLS_SSO_CLIENT_SECRET", ""
+)
 NOTIFICATION_EMAIL_ENABLED = os.environ.get(
     "NOTIFICATION_EMAIL_ENABLED", "true" if EMAIL_HOST else "false"
 ).lower() == "true"

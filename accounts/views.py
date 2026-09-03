@@ -1,12 +1,20 @@
+from datetime import timedelta
 from functools import wraps
+import hashlib
+import re
+import secrets
+from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from scheduling.models import (
@@ -28,7 +36,86 @@ from .forms import (
     StateUserCreateForm,
     StateUserForm,
 )
-from .models import InstructorApplication, UserOrganizationRole
+from .models import ExternalAccessCode, InstructorApplication, UserOrganizationRole
+
+
+def _safe_external_return_path(value):
+    value = str(value or "")[:500]
+    return value if value.startswith("/") and not value.startswith("//") else "/burn-plans"
+
+
+def _external_user_agency(user):
+    try:
+        return user.instructor_profile.home_organization.name
+    except (AttributeError, Instructor.DoesNotExist):
+        pass
+    try:
+        return user.instructor_application.home_organization.name
+    except (AttributeError, InstructorApplication.DoesNotExist):
+        return ""
+
+
+@login_required
+def nysfiretools_sso_authorize(request):
+    """Issue a short-lived code after Scheduler authentication."""
+    if not settings.NYSFIRETOOLS_SSO_CLIENT_SECRET:
+        return JsonResponse({"error": "single_sign_on_unavailable"}, status=503)
+
+    state = str(request.GET.get("state", ""))[:200]
+    if not re.fullmatch(r"[A-Za-z0-9_-]{20,200}", state):
+        return JsonResponse({"error": "invalid_state"}, status=400)
+
+    now = timezone.now()
+    ExternalAccessCode.objects.filter(expires_at__lte=now).delete()
+    raw_code = secrets.token_urlsafe(32)
+    ExternalAccessCode.objects.create(
+        token_hash=hashlib.sha256(raw_code.encode("utf-8")).hexdigest(),
+        state=state,
+        user=request.user,
+        return_path=_safe_external_return_path(request.GET.get("return_to")),
+        expires_at=now + timedelta(minutes=2),
+    )
+    query = urlencode({"code": raw_code, "state": state})
+    return redirect(f"{settings.NYSFIRETOOLS_MAIN_ORIGIN}/burn-plans/sso/callback?{query}")
+
+
+@csrf_exempt
+@require_POST
+def nysfiretools_sso_token(request):
+    """Exchange a one-time code for the approved Scheduler identity."""
+    configured_secret = settings.NYSFIRETOOLS_SSO_CLIENT_SECRET
+    supplied_secret = request.headers.get("X-NYSFIRETOOLS-SSO-Secret", "")
+    if not configured_secret:
+        return JsonResponse({"error": "single_sign_on_unavailable"}, status=503)
+    if not secrets.compare_digest(supplied_secret, configured_secret):
+        return JsonResponse({"error": "invalid_client"}, status=401)
+
+    token_hash = hashlib.sha256(str(request.POST.get("code", "")).encode("utf-8")).hexdigest()
+    now = timezone.now()
+    with transaction.atomic():
+        access_code = (
+            ExternalAccessCode.objects.select_for_update()
+            .select_related("user")
+            .filter(token_hash=token_hash, used_at__isnull=True, expires_at__gt=now)
+            .first()
+        )
+        if not access_code or not access_code.user.is_active:
+            return JsonResponse({"error": "invalid_or_expired_code"}, status=400)
+        access_code.used_at = now
+        access_code.save(update_fields=("used_at",))
+
+    user = access_code.user
+    email = (user.email or user.username).strip().lower()
+    return JsonResponse(
+        {
+            "sub": str(user.pk),
+            "email": email,
+            "name": user.get_full_name().strip() or email,
+            "agency": _external_user_agency(user),
+            "role": "admin" if user.is_superuser else "viewer",
+            "return_to": access_code.return_path,
+        }
+    )
 
 
 def state_admin_required(view_func):

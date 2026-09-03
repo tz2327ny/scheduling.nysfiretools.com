@@ -11,7 +11,7 @@ This is an independent NYSFIRETOOLS beta project. It is not an official New York
 - Statewide instructor directory covering all 62 New York counties and the Academy
 - Course-specific instructor authorizations
 - Instructor self-registration with Site Administrator account approval
-- Required SFI number during self-registration, optional for administrator-created records
+- Required SFI, CFI, or MFI number during self-registration, optional for administrator-created records
 - Possible-profile matching and explicit merge during application approval
 - Login-only Site Administrator accounts and scheduling-only instructor records
 - Instructor-submitted course authorization claims with State verification
@@ -62,6 +62,7 @@ Create a Railway project with an application service and PostgreSQL service. Con
 - `EMAIL_BACKEND=config.email_backend.CloudflareEmailBackend`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_EMAIL_API_TOKEN`, and `DEFAULT_FROM_EMAIL` for Cloudflare password-reset email delivery over HTTPS
 - `NOTIFICATION_EMAIL_ENABLED=true` to enable operational email notices
 - `SITE_BASE_URL=https://scheduling.nysfiretools.com` for links in notifications
+- `NYSFIRETOOLS_MAIN_ORIGIN=https://www.nysfiretools.com` and the same long random `NYSFIRETOOLS_SSO_CLIENT_SECRET` used by the main site for shared account sign-in
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM_NUMBER` for opt-in texts
 
 The included Dockerfile runs migrations and starts Gunicorn. The Railway health check uses `/health/`.

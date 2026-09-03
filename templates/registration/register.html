@@ -5,7 +5,7 @@
 <body class="login-page">
   <main class="login-card registration-card">
     <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Fire Training Scheduler</span></div></div>
-    <div class="login-copy"><p class="eyebrow">Instructor access request</p><h1>Create an instructor account</h1><p>Your SFI number is required. Your account will remain inactive until a Site Administrator reviews your identity and course authorizations.</p></div>
+    <div class="login-copy"><p class="eyebrow">Instructor access request</p><h1>Create an instructor account</h1><p>Your SFI, CFI, or MFI number is required. Your account will remain inactive until a Site Administrator reviews your identity and course authorizations.</p></div>
     <form method="post" novalidate>
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}

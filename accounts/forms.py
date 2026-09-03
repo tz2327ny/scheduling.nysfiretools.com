@@ -24,7 +24,7 @@ class EmailAuthenticationForm(AuthenticationForm):
 class InstructorRegistrationForm(UserCreationForm):
     email = forms.EmailField(label="Email address")
     sfi_number = forms.CharField(
-        label="SFI number",
+        label="SFI, CFI, or MFI number",
         max_length=30,
         help_text="Required for State verification and matching an existing instructor record.",
     )
@@ -174,7 +174,7 @@ class InstructorApplicationReviewForm(forms.Form):
             ] + [
                 (
                     str(instructor.pk),
-                    f"Yes — {instructor.full_name} · {instructor.sfi_number or 'No SFI number'} · "
+                    f"Yes — {instructor.full_name} · {instructor.sfi_number or 'No SFI/CFI/MFI number'} · "
                     f"{instructor.email or 'No email'} · {instructor.home_organization.short_name}"
                     f"{' · Existing login will be merged' if instructor.user_id else ''}",
                 )
