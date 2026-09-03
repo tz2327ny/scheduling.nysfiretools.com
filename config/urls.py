@@ -23,6 +23,11 @@ from accounts.forms import EmailAuthenticationForm
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/login/', auth_views.LoginView.as_view(authentication_form=EmailAuthenticationForm), name='login'),
+    path(
+        'accounts/reset/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(post_reset_login=True),
+        name='password_reset_confirm',
+    ),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('scheduling.urls')),

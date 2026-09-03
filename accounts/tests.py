@@ -755,6 +755,29 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertEqual(mail.outbox[0].to, ["forgot.password@example.com"])
         self.assertIn("/accounts/reset/", mail.outbox[0].body)
 
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_successful_password_reset_signs_user_in(self):
+        user = User.objects.create_user(
+            username="reset.login@dhses.ny.gov",
+            email="reset.login@dhses.ny.gov",
+            password="OldPassword!23456",
+            is_active=True,
+        )
+        self.client.post(reverse("password_reset"), {"email": user.email})
+        reset_url = mail.outbox[0].body.split("Use this secure link to choose a new password:\n", 1)[1].splitlines()[0]
+        response = self.client.get(reset_url)
+        response = self.client.post(
+            response["Location"],
+            {
+                "new_password1": "NewPassword!23456",
+                "new_password2": "NewPassword!23456",
+            },
+        )
+
+        self.assertRedirects(response, reverse("password_reset_complete"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
+        self.assertTrue(self.client.get(reverse("dashboard")).wsgi_request.user.is_authenticated)
+
     def test_state_admin_cannot_disable_or_demote_their_own_account(self):
         self.client.force_login(self.state_admin)
 
