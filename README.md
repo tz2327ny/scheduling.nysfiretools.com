@@ -19,7 +19,7 @@ This is an independent NYSFIRETOOLS beta project. It is not an official New York
 - Site Administrator management of participating counties and organizations
 - Case-insensitive unique account emails and duplicate-account consolidation
 - Self-service password recovery and Site Administrator password resets
-- Email notifications for instructor assignments, removals, schedule changes, cancellations, account approval, and authorization approval
+- Email notifications for active, linked instructor accounts covering assignments, removals, schedule changes, cancellations, account approval, and authorization approval
 - Instructor-controlled notification preferences with explicit text-message consent
 - Twilio SMS delivery with auditable delivery history
 - Instructor travel preferences
@@ -35,6 +35,10 @@ This is an independent NYSFIRETOOLS beta project. It is not an official New York
 - Optional external Acadis registration link
 
 Student registration, rosters, LMS features, and Acadis data synchronization are intentionally out of scope.
+
+## Interface completion checklist
+
+Treat interface work as complete only after checking both a standard desktop viewport and a 390-pixel phone viewport. Verify shared component alignment, readable wrapping, keyboard focus, touch-target sizing, and the empty, short, and long-content states before deployment.
 
 ## Local setup
 

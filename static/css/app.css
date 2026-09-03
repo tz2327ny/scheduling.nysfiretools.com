@@ -59,12 +59,13 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .user-chip strong, .user-chip small { display: block; }
 .user-chip strong { font-size: 13px; }
 .user-chip small { margin-top: 2px; color: var(--slate-500); font-size: 11px; }
-.account-actions { display: flex; align-items: center; gap: 11px; padding-left: 2px; }
-.account-actions form { margin: 0; }
+.account-actions { min-height: 40px; display: flex; align-items: center; gap: 11px; padding-left: 2px; }
+.account-actions form { min-height: 40px; display: flex; align-items: center; margin: 0; }
+.account-actions .text-link, .account-actions .text-button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
 
 .toolbar { min-height: 90px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .date-context { display: flex; align-items: center; gap: 12px; }
-.date-icon { width: 43px; height: 43px; display: grid; place-items: center; border: 1px solid #b9cad6; border-radius: 10px; background: white; color: var(--navy-900); font-size: 16px; font-weight: 800; box-shadow: 0 3px 8px rgba(15,35,55,.04); }
+.date-context > .date-icon { width: 43px; height: 43px; display: grid; place-items: center; border: 1px solid #b9cad6; border-radius: 10px; background: white; color: var(--navy-900); font-size: 16px; font-variant-numeric: tabular-nums; font-weight: 800; line-height: 1; box-shadow: 0 3px 8px rgba(15,35,55,.04); }
 .date-context strong, .date-context span { display: block; }
 .date-context strong { font-size: 13px; }
 .date-context div > span { margin-top: 3px; color: var(--slate-500); font-size: 11px; }
