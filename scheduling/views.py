@@ -334,6 +334,7 @@ def course_edit(request, pk):
 
 @login_required_unless_debug
 def instructor_list(request):
+    include_inactive = request.GET.get("inactive") == "1"
     instructors = Instructor.objects.select_related("home_organization").annotate(
         authorization_count=Count(
             "course_authorizations",
@@ -355,6 +356,8 @@ def instructor_list(request):
             distinct=True,
         ),
     )
+    if not include_inactive:
+        instructors = instructors.filter(active=True)
     organization = request.GET.get("organization")
     if organization:
         instructors = instructors.filter(home_organization_id=organization)
@@ -368,6 +371,7 @@ def instructor_list(request):
             "selected_organization": organization or "",
             "managed_ids": managed_ids,
             "can_create": bool(managed_ids),
+            "include_inactive": include_inactive,
         },
     )
 
@@ -693,7 +697,44 @@ def instructor_edit(request, pk):
     return render(
         request,
         "scheduling/instructor_form.html",
-        {"form": form, "page_heading": f"Edit {instructor.full_name}"},
+        {
+            "form": form,
+            "page_heading": f"Edit {instructor.full_name}",
+            "instructor": instructor,
+        },
+    )
+
+
+@login_required_unless_debug
+def instructor_delete(request, pk):
+    instructor = get_object_or_404(
+        Instructor.objects.select_related("home_organization", "user").annotate(
+            assignment_count=Count("assignments", distinct=True),
+        ),
+        pk=pk,
+    )
+    require_organization_manager(request.user, instructor.home_organization)
+    will_deactivate = instructor.assignment_count > 0
+    if request.method == "POST":
+        instructor_name = instructor.full_name
+        if will_deactivate:
+            instructor.active = False
+            instructor.save(update_fields=("active",))
+            messages.success(
+                request,
+                f"{instructor_name} was removed from active scheduling. Existing course history was preserved.",
+            )
+        else:
+            instructor.delete()
+            messages.success(request, f"{instructor_name} was deleted.")
+        return redirect("instructor_list")
+    return render(
+        request,
+        "scheduling/instructor_confirm_delete.html",
+        {
+            "instructor": instructor,
+            "will_deactivate": will_deactivate,
+        },
     )
 
 

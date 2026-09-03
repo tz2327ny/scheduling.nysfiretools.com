@@ -6,10 +6,11 @@
 {% block content %}
 <section class="page-actions">
   <p>County-assigned instructors and instructors assigned to the New York State Academy of Fire Science.</p>
-  {% if can_create %}<a class="button primary" href="{% url 'instructor_create' %}">＋ Add instructor</a>{% endif %}
+  <div class="row-actions">{% if include_inactive %}<a class="button secondary" href="{% url 'instructor_list' %}">Hide inactive</a>{% else %}<a class="button secondary" href="?inactive=1">Show inactive</a>{% endif %}{% if can_create %}<a class="button primary" href="{% url 'instructor_create' %}">＋ Add instructor</a>{% endif %}</div>
 </section>
 
 <form class="filter-bar" method="get">
+  {% if include_inactive %}<input type="hidden" name="inactive" value="1">{% endif %}
   <label>Home organization
     <select name="organization">
       <option value="">All organizations</option>
@@ -26,12 +27,12 @@
     </div>
     {% for instructor in instructors %}
     <div class="data-row" role="row">
-      <span class="person-cell" data-label="Instructor"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}</strong><small>{% if instructor.sfi_number %}SFI {{ instructor.sfi_number }} · {% endif %}{{ instructor.email|default:"No email entered" }}{% if not instructor.user_id %} · No login account{% endif %}</small></span></span>
+      <span class="person-cell" data-label="Instructor"><i class="avatar small">{{ instructor.first_name|first }}{{ instructor.last_name|first }}</i><span><strong>{{ instructor.full_name }}{% if not instructor.active %} · Inactive{% endif %}</strong><small>{% if instructor.sfi_number %}SFI {{ instructor.sfi_number }} · {% endif %}{{ instructor.email|default:"No email entered" }}{% if not instructor.user_id %} · No login account{% endif %}</small></span></span>
       <span data-label="Assignment">{{ instructor.home_organization.short_name }}{% if instructor.is_regional %}<small>Academy instructor</small>{% endif %}</span>
       <span data-label="Travel">{{ instructor.get_travel_preference_display }}</span>
       <span data-label="Authorizations">{{ instructor.authorization_count }}</span>
       <span data-label="Upcoming">{{ instructor.upcoming_assignment_count }}</span>
-      <span class="row-actions" data-label="Actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} one-time · {{ instructor.recurring_availability_count }} weekly</small>{% if user.is_authenticated and instructor.user_id == user.id %}<a class="text-link" href="{% url 'instructor_notifications' instructor.pk %}">Notifications</a>{% endif %}{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a>{% endif %}</span>
+      <span class="row-actions" data-label="Actions"><a class="text-link" href="{% url 'instructor_availability' instructor.pk %}">Availability</a><small>{{ instructor.availability_count }} one-time · {{ instructor.recurring_availability_count }} weekly</small>{% if user.is_authenticated and instructor.user_id == user.id %}<a class="text-link" href="{% url 'instructor_notifications' instructor.pk %}">Notifications</a>{% endif %}{% if instructor.home_organization_id in managed_ids %}<a class="text-link" href="{% url 'instructor_edit' instructor.pk %}">Edit profile</a><a class="text-link danger-link" href="{% url 'instructor_delete' instructor.pk %}">Delete</a>{% endif %}</span>
     </div>
     {% empty %}<div class="empty-state">No instructors match this filter.</div>{% endfor %}
   </div>

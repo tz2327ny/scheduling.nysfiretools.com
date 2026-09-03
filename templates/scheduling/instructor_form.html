@@ -25,7 +25,7 @@
       {% endfor %}
     </div>
   </section>
-  <div class="form-actions"><a class="button secondary" href="{% url 'instructor_list' %}">Cancel</a><button class="button primary" type="submit">Save instructor</button></div>
+  <div class="form-actions">{% if instructor %}<a class="button danger" href="{% url 'instructor_delete' instructor.pk %}">Delete instructor</a>{% endif %}<a class="button secondary" href="{% url 'instructor_list' %}">Cancel</a><button class="button primary" type="submit">Save instructor</button></div>
 </form>
 {% endblock %}
 

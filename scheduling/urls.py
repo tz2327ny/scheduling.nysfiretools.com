@@ -16,6 +16,7 @@ urlpatterns = [
     path("instructors/", views.instructor_list, name="instructor_list"),
     path("instructors/new/", views.instructor_create, name="instructor_create"),
     path("instructors/<int:pk>/edit/", views.instructor_edit, name="instructor_edit"),
+    path("instructors/<int:pk>/delete/", views.instructor_delete, name="instructor_delete"),
     path(
         "instructors/<int:pk>/authorizations/",
         views.instructor_authorizations,

@@ -535,6 +535,69 @@ class CountyPermissionTests(SchedulingTestCase):
         self.assertIsNone(instructor.user_id)
 
     @override_settings(DEBUG=False)
+    def test_admin_can_delete_unassigned_instructor_without_deleting_linked_account(self):
+        linked_user = get_user_model().objects.create_user(
+            username="duplicate@example.com",
+            email="duplicate@example.com",
+            password="test-password",
+        )
+        instructor = self.jefferson_instructor
+        instructor.user = linked_user
+        instructor.save(update_fields=("user",))
+
+        confirmation = self.client.get(
+            reverse("instructor_delete", args=(instructor.pk,))
+        )
+        response = self.client.post(
+            reverse("instructor_delete", args=(instructor.pk,))
+        )
+
+        self.assertContains(confirmation, "This permanently deletes")
+        self.assertRedirects(response, reverse("instructor_list"))
+        self.assertFalse(Instructor.objects.filter(pk=instructor.pk).exists())
+        self.assertTrue(get_user_model().objects.filter(pk=linked_user.pk).exists())
+
+    @override_settings(DEBUG=False)
+    def test_admin_deactivates_assigned_instructor_and_preserves_history(self):
+        instructor = self.jefferson_instructor
+        assignment = InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=instructor,
+            role=InstructorAssignment.Role.LEAD,
+        )
+
+        confirmation = self.client.get(
+            reverse("instructor_delete", args=(instructor.pk,))
+        )
+        response = self.client.post(
+            reverse("instructor_delete", args=(instructor.pk,))
+        )
+
+        self.assertContains(confirmation, "course assignment")
+        self.assertRedirects(response, reverse("instructor_list"))
+        instructor.refresh_from_db()
+        self.assertFalse(instructor.active)
+        self.assertTrue(InstructorAssignment.objects.filter(pk=assignment.pk).exists())
+        directory = self.client.get(reverse("instructor_list"))
+        archived_directory = self.client.get(
+            f'{reverse("instructor_list")}?inactive=1'
+        )
+        self.assertNotContains(directory, instructor.full_name)
+        self.assertContains(archived_directory, instructor.full_name)
+        self.assertContains(archived_directory, "Inactive")
+
+    @override_settings(DEBUG=False)
+    def test_admin_cannot_delete_instructor_from_another_organization(self):
+        response = self.client.post(
+            reverse("instructor_delete", args=(self.lewis_instructor.pk,))
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(
+            Instructor.objects.filter(pk=self.lewis_instructor.pk).exists()
+        )
+
+    @override_settings(DEBUG=False)
     def test_site_admin_can_create_scheduling_only_instructor_with_authorization(self):
         site_admin = get_user_model().objects.create_superuser(
             username="site.admin@example.com",

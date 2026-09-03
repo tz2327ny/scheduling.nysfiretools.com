@@ -79,6 +79,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -.02em; }
 .button.secondary { border-color: var(--slate-300); background: white; color: var(--navy-900); }
 .button.danger { background: var(--red-700); color: white; }
 .button.danger:hover { background: #91272a; }
+.danger-link { color: var(--red-700); }
+.danger-link:hover { color: #91272a; }
 
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .dashboard-filter { margin-bottom: 14px; overflow: visible; }
