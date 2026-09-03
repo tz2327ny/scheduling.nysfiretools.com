@@ -19,7 +19,7 @@
         {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
       </div>
       {% else %}
-      <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% elif field.name == 'instructor_profile' %}wide{% endif %}">
+      <label class="field {% if field.name == 'organization_admins' %}wide checkbox-group{% elif field.name == 'instructor_profile' or field.name == 'instructor_home_organization' %}wide{% endif %}">
         <span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
       </label>
       {% endif %}

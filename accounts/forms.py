@@ -8,7 +8,7 @@ from django.db.models import Q
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
 from scheduling.services import sync_verified_course_authorizations
 
-from .models import UserOrganizationRole
+from .models import InstructorApplication, UserOrganizationRole
 
 
 User = get_user_model()
@@ -217,6 +217,15 @@ class StateUserForm(forms.ModelForm):
         required=False,
         help_text="Optional. Leave blank for an administrator-only account. Clearing an existing link deactivates that instructor profile but preserves its staffing history.",
     )
+    instructor_home_organization = forms.ModelChoiceField(
+        label="Instructor home assignment",
+        queryset=Organization.objects.none(),
+        required=False,
+        help_text=(
+            "The county or State Academy shown for this instructor throughout the scheduler. "
+            "This is separate from county/organization administrator access."
+        ),
+    )
     verified_courses = forms.ModelMultipleChoiceField(
         label="Verified course authorizations",
         queryset=Course.objects.none(),
@@ -240,6 +249,9 @@ class StateUserForm(forms.ModelForm):
         self.acting_user = acting_user
         super().__init__(*args, **kwargs)
         self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
+        self.fields["instructor_home_organization"].queryset = Organization.objects.filter(
+            active=True
+        )
         self.fields["verified_courses"].queryset = Course.objects.filter(
             active=True
         ).order_by("name", "record_number")
@@ -253,6 +265,9 @@ class StateUserForm(forms.ModelForm):
             )
             instructor = getattr(self.instance, "instructor_profile", None)
             if instructor:
+                self.fields["instructor_home_organization"].initial = (
+                    instructor.home_organization
+                )
                 self.fields["verified_courses"].initial = (
                     instructor.course_authorizations.filter(
                         status=CourseAuthorization.Status.ACTIVE
@@ -286,6 +301,11 @@ class StateUserForm(forms.ModelForm):
                 "verified_courses",
                 "Link an instructor directory profile before assigning course authorizations.",
             )
+        selected_instructor = cleaned.get("instructor_profile")
+        if selected_instructor and not cleaned.get("instructor_home_organization"):
+            cleaned["instructor_home_organization"] = selected_instructor.home_organization
+        if not selected_instructor:
+            cleaned["instructor_home_organization"] = None
         return cleaned
 
     def save_with_roles(self):
@@ -304,10 +324,29 @@ class StateUserForm(forms.ModelForm):
             selected_instructor.first_name = user.first_name
             selected_instructor.last_name = user.last_name
             selected_instructor.email = user.email
+            selected_instructor.home_organization = self.cleaned_data[
+                "instructor_home_organization"
+            ]
             selected_instructor.active = True
             selected_instructor.save(
-                update_fields=("user", "first_name", "last_name", "email", "active")
+                update_fields=(
+                    "user",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "home_organization",
+                    "active",
+                )
             )
+            application = getattr(user, "instructor_application", None)
+            if (
+                application
+                and application.status == InstructorApplication.Status.APPROVED
+                and application.home_organization_id
+                != selected_instructor.home_organization_id
+            ):
+                application.home_organization = selected_instructor.home_organization
+                application.save(update_fields=("home_organization",))
             sync_verified_course_authorizations(
                 selected_instructor,
                 self.cleaned_data["verified_courses"],
@@ -350,6 +389,15 @@ class StateUserCreateForm(UserCreationForm):
         required=False,
         help_text="Optional. Link an instructor already added to the scheduling directory, or leave blank for an administrator-only account.",
     )
+    instructor_home_organization = forms.ModelChoiceField(
+        label="Instructor home assignment",
+        queryset=Organization.objects.none(),
+        required=False,
+        help_text=(
+            "The county or State Academy shown for this instructor throughout the scheduler. "
+            "Leave blank to keep the linked directory profile's current assignment."
+        ),
+    )
     verified_courses = forms.ModelMultipleChoiceField(
         label="Verified course authorizations",
         queryset=Course.objects.none(),
@@ -366,6 +414,9 @@ class StateUserCreateForm(UserCreationForm):
         self.acting_user = acting_user
         super().__init__(*args, **kwargs)
         self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
+        self.fields["instructor_home_organization"].queryset = Organization.objects.filter(
+            active=True
+        )
         self.fields["verified_courses"].queryset = Course.objects.filter(
             active=True
         ).order_by("name", "record_number")
@@ -385,6 +436,7 @@ class StateUserCreateForm(UserCreationForm):
                 "is_superuser",
                 "organization_admins",
                 "instructor_profile",
+                "instructor_home_organization",
                 "verified_courses",
             ]
         )
@@ -402,6 +454,11 @@ class StateUserCreateForm(UserCreationForm):
                 "verified_courses",
                 "Link an instructor directory profile before assigning course authorizations.",
             )
+        selected_instructor = cleaned.get("instructor_profile")
+        if selected_instructor and not cleaned.get("instructor_home_organization"):
+            cleaned["instructor_home_organization"] = selected_instructor.home_organization
+        if not selected_instructor:
+            cleaned["instructor_home_organization"] = None
         return cleaned
 
     def save_with_roles(self):
@@ -418,9 +475,19 @@ class StateUserCreateForm(UserCreationForm):
             selected_instructor.first_name = user.first_name
             selected_instructor.last_name = user.last_name
             selected_instructor.email = user.email
+            selected_instructor.home_organization = self.cleaned_data[
+                "instructor_home_organization"
+            ]
             selected_instructor.active = True
             selected_instructor.save(
-                update_fields=("user", "first_name", "last_name", "email", "active")
+                update_fields=(
+                    "user",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "home_organization",
+                    "active",
+                )
             )
             sync_verified_course_authorizations(
                 selected_instructor,

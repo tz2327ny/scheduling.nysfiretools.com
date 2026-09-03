@@ -429,6 +429,64 @@ class InstructorAccountWorkflowTests(TestCase):
             ).exists()
         )
 
+    def test_state_admin_can_change_instructor_home_assignment(self):
+        erie = Organization.objects.get(name="Erie County")
+        managed_user = User.objects.create_user(
+            username="david@example.com",
+            email="david@example.com",
+            password=self.password,
+            first_name="David",
+            last_name="Mastrella",
+            is_active=True,
+        )
+        instructor = Instructor.objects.create(
+            user=managed_user,
+            first_name="David",
+            last_name="Mastrella",
+            email=managed_user.email,
+            home_organization=self.academy,
+        )
+        application = InstructorApplication.objects.create(
+            user=managed_user,
+            sfi_number="SFI-DAVID",
+            home_organization=self.academy,
+            travel_preference=InstructorApplication.TravelPreference.CONTACT_ME,
+            status=InstructorApplication.Status.APPROVED,
+            instructor=instructor,
+        )
+        self.client.force_login(self.state_admin)
+
+        edit_page = self.client.get(reverse("user_edit", args=[managed_user.pk]))
+        self.assertContains(edit_page, "Instructor home assignment")
+        self.assertContains(
+            edit_page,
+            "This is separate from county/organization administrator access.",
+        )
+        response = self.client.post(
+            reverse("user_edit", args=[managed_user.pk]),
+            {
+                "first_name": managed_user.first_name,
+                "last_name": managed_user.last_name,
+                "email": managed_user.email,
+                "is_active": "on",
+                "instructor_profile": instructor.pk,
+                "instructor_home_organization": erie.pk,
+            },
+        )
+
+        self.assertRedirects(response, reverse("user_list"))
+        instructor.refresh_from_db()
+        application.refresh_from_db()
+        self.assertEqual(instructor.home_organization, erie)
+        self.assertEqual(application.home_organization, erie)
+        self.assertFalse(
+            UserOrganizationRole.objects.filter(
+                user=managed_user,
+                organization=erie,
+                role=UserOrganizationRole.Role.ADMINISTRATOR,
+            ).exists()
+        )
+
     def test_site_admin_can_unlink_own_instructor_profile_without_deleting_it(self):
         instructor = Instructor.objects.create(
             user=self.state_admin,
