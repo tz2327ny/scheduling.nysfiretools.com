@@ -42,11 +42,14 @@ class InstructorRegistrationForm(UserCreationForm):
         help_text="Optional travel limits, preferred areas, or other conditions.",
     )
     requested_courses = forms.ModelMultipleChoiceField(
-        label="Courses you are authorized to teach",
+        label="Courses you are authorized to teach — review required",
         queryset=Course.objects.none(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
-        help_text="Select every current authorization. A Site Administrator will verify these before they become active.",
+        help_text=(
+            "Selections are authorization claims only. A Site Administrator reviews and "
+            "verifies each selected course before it becomes active or can be used for assignments."
+        ),
     )
 
     class Meta(UserCreationForm.Meta):

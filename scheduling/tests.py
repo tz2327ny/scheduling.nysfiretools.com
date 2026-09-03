@@ -1358,18 +1358,32 @@ class OrganizationManagementTests(TestCase):
         response = self.client.post(
             reverse("organization_create"),
             {
-                "name": "Albany County",
-                "short_name": "Albany",
+                "name": "Test County",
+                "short_name": "Test",
                 "kind": Organization.Kind.COUNTY,
-                "display_order": 20,
+                "display_order": 100,
                 "active": "on",
             },
         )
 
         self.assertRedirects(response, reverse("organization_list"))
-        organization = Organization.objects.get(name="Albany County")
-        self.assertEqual(organization.short_name, "Albany")
+        organization = Organization.objects.get(name="Test County")
+        self.assertEqual(organization.short_name, "Test")
         self.assertTrue(organization.active)
+
+    @override_settings(DEBUG=False)
+    def test_state_administrator_can_choose_any_county_when_creating_instructor(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.get(reverse("instructor_create"))
+
+        organizations = response.context["form"].fields["home_organization"].queryset
+        self.assertEqual(
+            organizations.filter(kind=Organization.Kind.COUNTY).count(),
+            62,
+        )
+        self.assertTrue(organizations.filter(name="Albany County").exists())
+        self.assertTrue(organizations.filter(name="Yates County").exists())
 
     @override_settings(DEBUG=False)
     def test_county_administrator_cannot_manage_organizations(self):

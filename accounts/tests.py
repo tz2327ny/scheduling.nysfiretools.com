@@ -99,6 +99,26 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertRedirects(response, reverse("registration_received"))
         return InstructorApplication.objects.select_related("user").get(user__email=email)
 
+    def test_registration_offers_all_new_york_counties_and_state_academy(self):
+        response = self.client.get(reverse("instructor_register"))
+
+        organizations = response.context["form"].fields["home_organization"].queryset
+        self.assertEqual(
+            organizations.filter(kind=Organization.Kind.COUNTY).count(),
+            62,
+        )
+        self.assertTrue(organizations.filter(name="Albany County").exists())
+        self.assertTrue(organizations.filter(name="Yates County").exists())
+        self.assertTrue(
+            organizations.filter(
+                name="New York State Academy of Fire Science",
+                kind=Organization.Kind.ACADEMY,
+            ).exists()
+        )
+        self.assertContains(response, "Administrator review required")
+        self.assertContains(response, "Selecting a course submits it for verification")
+        self.assertContains(response, "Selections are authorization claims only")
+
     def test_registration_creates_inactive_account_with_course_claims(self):
         application = self.create_pending_application()
 

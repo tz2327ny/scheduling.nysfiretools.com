@@ -8,7 +8,7 @@ This is an independent NYSFIRETOOLS beta project. It is not an official New York
 
 - Statewide dashboard and schedule awareness
 - Course library with a persistent Course Record Number and instructor staffing requirements
-- County and Academy instructor directory
+- Statewide instructor directory covering all 62 New York counties and the Academy
 - Course-specific instructor authorizations
 - Instructor self-registration with Site Administrator account approval
 - Required SFI number during self-registration, optional for administrator-created records

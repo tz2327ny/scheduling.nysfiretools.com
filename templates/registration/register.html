@@ -14,6 +14,7 @@
         {% if field.name == 'requested_courses' %}
         <div class="field wide course-selector" data-course-selector>
           <span>{{ field.label }}</span>
+          <div class="authorization-review-note" role="note"><strong>Administrator review required</strong><small>Selecting a course submits it for verification; it does not immediately authorize the account to teach that course.</small></div>
           <input class="course-search" type="search" placeholder="Search by course name or record number" aria-label="Search course authorizations" data-course-search>
           <div class="course-choice-list">{{ field }}</div>
           {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}
