@@ -176,7 +176,7 @@ def notify_event_update(event):
 
 
 def notify_account_approved(instructor):
-    subject = "Your NYSFIRETOOLS Fire Training Scheduler account was approved"
+    subject = "Your NYSFIRETOOLS account was approved"
     body = (
         f"Hello {instructor.first_name},\n\n"
         "Your instructor account has been approved. You can now sign in and manage "

@@ -1,14 +1,14 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYSFIRETOOLS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYSFIRETOOLS</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
 <body class="login-page">
   <main class="login-card">
-    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Fire Training Scheduler</span></div></div>
-    <div class="login-copy"><p class="eyebrow">Independent beta</p><h1>Welcome back</h1><p>Sign in with your active account.</p></div>
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Account Access</span></div></div>
+    <div class="login-copy"><p class="eyebrow">One account for every protected tool</p><h1>Sign in to NYSFIRETOOLS</h1><p>Use your active NYSFIRETOOLS account for the Fire Training Scheduler, Burn Plan Repository, Site Plan Builder and department submissions.</p></div>
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Sign in</button></form>
     <p class="login-alternate"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
-    <p class="login-alternate">Instructor without an account? <a href="{% url 'instructor_register' %}">Request access</a></p>
+    <p class="login-alternate">Need a NYSFIRETOOLS account? <a href="{% url 'instructor_register' %}">Request access</a></p>
     <p class="independence-note"><strong>Independent tool:</strong> This is not an official New York State or State Fire system and has not been formally approved or endorsed.</p>
   </main>
 </body>
