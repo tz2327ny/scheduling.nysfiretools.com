@@ -13,6 +13,17 @@ from django.utils import timezone
 from .models import NotificationDelivery, NotificationPreference
 
 
+def _is_notification_participant(instructor):
+    """Limit operational messages to active instructors with active login accounts."""
+
+    return bool(
+        instructor
+        and instructor.active
+        and instructor.user_id
+        and instructor.user.is_active
+    )
+
+
 def _event_url(event):
     return f"{settings.SITE_BASE_URL.rstrip('/')}{reverse('training_detail', args=(event.pk,))}"
 
@@ -47,6 +58,9 @@ def _queue_delivery(instructor, channel, kind, destination, subject, body, event
 
 
 def queue_instructor_notification(instructor, kind, subject, body, event=None, session=None):
+    if not _is_notification_participant(instructor):
+        return []
+
     preferences, _ = NotificationPreference.objects.get_or_create(instructor=instructor)
     is_assignment = kind in (
         NotificationDelivery.Kind.ASSIGNMENT,
@@ -62,7 +76,7 @@ def queue_instructor_notification(instructor, kind, subject, body, event=None, s
         return []
 
     deliveries = []
-    email = (instructor.email or (instructor.user.email if instructor.user_id else "")).strip()
+    email = (instructor.user.email or instructor.email).strip()
     if preferences.email_enabled and email:
         deliveries.append(
             _queue_delivery(
@@ -195,7 +209,13 @@ def notify_authorization_approved(authorization):
 
 
 def deliver_notification(delivery_id):
-    delivery = NotificationDelivery.objects.get(pk=delivery_id)
+    delivery = NotificationDelivery.objects.select_related("instructor__user").get(pk=delivery_id)
+    if not _is_notification_participant(delivery.instructor):
+        delivery.status = NotificationDelivery.Status.SKIPPED
+        delivery.error_message = "Instructor does not have an active linked account."
+        delivery.save(update_fields=("status", "error_message"))
+        return delivery
+
     try:
         if delivery.channel == NotificationDelivery.Channel.EMAIL:
             if not settings.NOTIFICATION_EMAIL_ENABLED:

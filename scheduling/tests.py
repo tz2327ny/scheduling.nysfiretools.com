@@ -26,7 +26,7 @@ from scheduling.models import (
 )
 from scheduling.permissions import can_manage_organization
 from scheduling.services import eligible_instructors_for_session
-from scheduling.notifications import notify_assignment
+from scheduling.notifications import deliver_notification, notify_assignment
 from scheduling.unit_staffing import sync_event_units
 
 
@@ -787,6 +787,75 @@ class NotificationPreferenceTests(SchedulingTestCase):
         self.assertEqual(delivery.status, NotificationDelivery.Status.SENT)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(self.course.name, mail.outbox[0].body)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        NOTIFICATION_EMAIL_ENABLED=True,
+    )
+    def test_scheduling_only_instructor_is_not_emailed(self):
+        scheduling_only = self.make_instructor("DirectoryOnly", self.jefferson)
+        scheduling_only.email = "directory-only@example.com"
+        scheduling_only.save(update_fields=("email",))
+        assignment = InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=scheduling_only,
+            role=InstructorAssignment.Role.LEAD,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            deliveries = notify_assignment(assignment)
+
+        self.assertEqual(deliveries, [])
+        self.assertFalse(
+            NotificationPreference.objects.filter(instructor=scheduling_only).exists()
+        )
+        self.assertFalse(
+            NotificationDelivery.objects.filter(instructor=scheduling_only).exists()
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        NOTIFICATION_EMAIL_ENABLED=True,
+    )
+    def test_disabled_login_account_is_not_emailed(self):
+        self.user.is_active = False
+        self.user.save(update_fields=("is_active",))
+        assignment = InstructorAssignment.objects.create(
+            session=self.session,
+            instructor=self.instructor,
+            role=InstructorAssignment.Role.LEAD,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            deliveries = notify_assignment(assignment)
+
+        self.assertEqual(deliveries, [])
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        NOTIFICATION_EMAIL_ENABLED=True,
+    )
+    def test_pending_delivery_is_skipped_if_instructor_has_no_account(self):
+        scheduling_only = self.make_instructor("Unlinked", self.jefferson)
+        scheduling_only.email = "unlinked@example.com"
+        scheduling_only.save(update_fields=("email",))
+        delivery = NotificationDelivery.objects.create(
+            instructor=scheduling_only,
+            channel=NotificationDelivery.Channel.EMAIL,
+            kind=NotificationDelivery.Kind.ASSIGNMENT,
+            destination=scheduling_only.email,
+            subject="Should not send",
+            body="This delivery must be skipped.",
+        )
+
+        deliver_notification(delivery.pk)
+
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, NotificationDelivery.Status.SKIPPED)
+        self.assertIn("active linked account", delivery.error_message)
+        self.assertEqual(len(mail.outbox), 0)
 
     @override_settings(
         NOTIFICATION_EMAIL_ENABLED=False,
