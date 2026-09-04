@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
 from scheduling.services import sync_verified_course_authorizations
+from scheduling.widgets import OrganizationSelect, OrganizationSelectMultiple
 
 from .models import AccountProfile, InstructorApplication, UserOrganizationRole
 
@@ -15,6 +16,8 @@ User = get_user_model()
 
 
 class OrganizationChoiceField(forms.ModelChoiceField):
+    widget = OrganizationSelect
+
     def label_from_instance(self, organization):
         return organization.authority_label
 
@@ -378,7 +381,7 @@ class StateUserForm(forms.ModelForm):
         label="County/organization administrator for",
         queryset=Organization.objects.none(),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=OrganizationSelectMultiple(attrs={"size": 12}),
     )
     instructor_profile = InstructorProfileChoiceField(
         label="Linked instructor directory profile",
@@ -390,6 +393,7 @@ class StateUserForm(forms.ModelForm):
         label="Instructor home assignment",
         queryset=Organization.objects.none(),
         required=False,
+        widget=OrganizationSelect,
         help_text=(
             "The county or State Academy shown for this instructor throughout the scheduler. "
             "This is separate from county/organization administrator access."
@@ -408,10 +412,10 @@ class StateUserForm(forms.ModelForm):
         fields = ("first_name", "last_name", "email", "is_active", "is_superuser")
         labels = {
             "is_active": "Account enabled",
-            "is_superuser": "Site administrator",
+            "is_superuser": "Global administrator",
         }
         help_texts = {
-            "is_superuser": "Site administrators have statewide access and can approve instructors, manage users, organizations, and courses.",
+            "is_superuser": "Global administrators can approve accounts and manage every NYSFIRETOOLS organization, user, and Scheduler setting.",
         }
 
     def __init__(self, *args, acting_user=None, **kwargs):
@@ -459,7 +463,7 @@ class StateUserForm(forms.ModelForm):
             if not cleaned.get("is_active"):
                 self.add_error("is_active", "You cannot disable your own account.")
             if not cleaned.get("is_superuser"):
-                self.add_error("is_superuser", "You cannot remove your own Site Administrator access.")
+                self.add_error("is_superuser", "You cannot remove your own Global Administrator access.")
         application = getattr(self.instance, "instructor_application", None)
         if application and application.status != application.Status.APPROVED and cleaned.get("is_active"):
             self.add_error("is_active", "Approve this instructor application before enabling the account.")
@@ -540,15 +544,15 @@ class StateUserCreateForm(UserCreationForm):
     email = forms.EmailField(label="Email address")
     is_active = forms.BooleanField(label="Account enabled", required=False, initial=True)
     is_superuser = forms.BooleanField(
-        label="Site administrator",
+        label="Global administrator",
         required=False,
-        help_text="Site administrators have statewide access. Leave unchecked for instructors and organization administrators.",
+        help_text="Global administrators can manage all NYSFIRETOOLS accounts, organizations, and Scheduler settings. Leave unchecked for scoped administrators.",
     )
     organization_admins = forms.ModelMultipleChoiceField(
         label="County/organization administrator for",
         queryset=Organization.objects.none(),
         required=False,
-        widget=forms.CheckboxSelectMultiple,
+        widget=OrganizationSelectMultiple(attrs={"size": 12}),
     )
     instructor_profile = InstructorProfileChoiceField(
         label="Linked instructor directory profile",
@@ -560,6 +564,7 @@ class StateUserCreateForm(UserCreationForm):
         label="Instructor home assignment",
         queryset=Organization.objects.none(),
         required=False,
+        widget=OrganizationSelect,
         help_text=(
             "The county or State Academy shown for this instructor throughout the scheduler. "
             "Leave blank to keep the linked directory profile's current assignment."

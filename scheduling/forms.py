@@ -19,6 +19,7 @@ from .models import (
     TrainingSession,
     normalize_organization_name,
 )
+from .widgets import OrganizationSelect
 
 
 def county_from_organization_name(name):
@@ -133,6 +134,7 @@ class OrganizationMergeForm(forms.Form):
     target = forms.ModelChoiceField(
         label="Merge into",
         queryset=Organization.objects.none(),
+        widget=OrganizationSelect,
         help_text="The old organization remains on historical training records and becomes an alias of the selected successor.",
     )
 
@@ -307,6 +309,7 @@ class TrainingEventForm(forms.ModelForm):
 
     def __init__(self, *args, managed_organizations=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["host_organization"].widget = OrganizationSelect()
         if managed_organizations is not None:
             self.fields["host_organization"].queryset = managed_organizations
         if self.instance.pk:
@@ -445,6 +448,7 @@ class InstructorForm(forms.ModelForm):
     ):
         self.authorization_verifier = authorization_verifier
         super().__init__(*args, **kwargs)
+        self.fields["home_organization"].widget = OrganizationSelect()
         if managed_organizations is not None:
             self.fields["home_organization"].queryset = managed_organizations
         if authorization_verifier is None:

@@ -17,9 +17,9 @@
     </select>
   </label>
   <label>Hosting organization
-    <select name="organization">
+    <select name="organization" data-organization-picker>
       <option value="">All organizations</option>
-      {% for organization in organizations %}<option value="{{ organization.pk }}" {% if selected_organization == organization.pk|stringformat:"s" %}selected{% endif %}>{{ organization.short_name }}</option>{% endfor %}
+      {% for organization in organizations %}<option value="{{ organization.pk }}" data-county="{{ organization.county_name }}" data-kind="{{ organization.kind }}" data-search="{{ organization.fdid_code }}" {% if selected_organization == organization.pk|stringformat:"s" %}selected{% endif %}>{{ organization.authority_label }}</option>{% endfor %}
     </select>
   </label>
   <button class="button secondary" type="submit">Apply filters</button>

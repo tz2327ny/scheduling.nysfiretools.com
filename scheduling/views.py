@@ -182,6 +182,9 @@ def dashboard(request):
 @login_required_unless_debug
 def organization_list(request):
     require_course_manager(request.user)
+    search = request.GET.get("q", "").strip()[:100]
+    county = request.GET.get("county", "").strip()[:60]
+    kind = request.GET.get("kind", "").strip()[:16]
     organizations = Organization.objects.annotate(
         instructor_count=Count("instructors", distinct=True),
         training_count=Count("training_events", distinct=True),
@@ -191,10 +194,34 @@ def organization_list(request):
             distinct=True,
         ),
     ).select_related("parent", "successor")
+    if search:
+        organizations = organizations.filter(
+            Q(name__icontains=search)
+            | Q(short_name__icontains=search)
+            | Q(fdid_code__icontains=search)
+            | Q(aliases__name__icontains=search)
+        ).distinct()
+    if county:
+        organizations = organizations.filter(county_name__iexact=county)
+    if kind in Organization.Kind.values:
+        organizations = organizations.filter(kind=kind)
+    organizations = organizations.order_by("display_order", "kind", "county_name", "name")
+    paginator = Paginator(organizations, 50)
+    page = paginator.get_page(request.GET.get("page"))
     return render(
         request,
         "scheduling/organization_list.html",
-        {"organizations": organizations},
+        {
+            "organizations": page.object_list,
+            "page_obj": page,
+            "search": search,
+            "selected_county": county,
+            "selected_kind": kind,
+            "county_choices": Organization.objects.filter(
+                kind=Organization.Kind.AGENCY,
+            ).order_by("county_name").values_list("county_name", flat=True).distinct(),
+            "kind_choices": Organization.Kind.choices,
+        },
     )
 
 

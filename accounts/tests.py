@@ -333,6 +333,14 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertContains(response, reverse("general_register"))
         self.assertContains(response, reverse("instructor_register"))
 
+    def test_general_registration_has_searchable_county_filtered_organization_picker(self):
+        response = self.client.get(reverse("general_register"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-organization-picker")
+        self.assertContains(response, "js/organization-picker.js")
+        self.assertContains(response, 'data-county="Jefferson"')
+
     def test_approved_general_user_can_join_scheduler_with_same_account(self):
         user = User.objects.create_user(
             username="general.join@example.com",
@@ -768,6 +776,15 @@ class InstructorAccountWorkflowTests(TestCase):
         self.assertTrue(created.is_active)
         self.assertFalse(Instructor.objects.filter(user=created).exists())
 
+    def test_global_admin_can_choose_global_access_for_another_account(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.get(reverse("user_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Global administrator")
+        self.assertContains(response, "manage all NYSFIRETOOLS accounts")
+
     def test_site_admin_can_assign_authorizations_when_linking_login(self):
         instructor = Instructor.objects.create(
             first_name="Schedule",
@@ -915,7 +932,7 @@ class InstructorAccountWorkflowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "You cannot disable your own account.")
-        self.assertContains(response, "You cannot remove your own Site Administrator access.")
+        self.assertContains(response, "You cannot remove your own Global Administrator access.")
         self.state_admin.refresh_from_db()
         self.assertTrue(self.state_admin.is_active)
         self.assertTrue(self.state_admin.is_superuser)

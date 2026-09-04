@@ -9,6 +9,13 @@
   <a class="button primary" href="{% url 'organization_create' %}">＋ Add organization</a>
 </section>
 
+<form class="panel organization-filters" method="get">
+  <label class="field"><span>Search</span><input type="search" name="q" value="{{ search }}" placeholder="Name, former name, short name, or FDID"></label>
+  <label class="field"><span>County</span><select name="county"><option value="">All counties</option>{% for county in county_choices %}<option value="{{ county }}"{% if selected_county == county %} selected{% endif %}>{{ county }}</option>{% endfor %}</select></label>
+  <label class="field"><span>Organization type</span><select name="kind"><option value="">All types</option>{% for value, label in kind_choices %}<option value="{{ value }}"{% if selected_kind == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <div class="organization-filter-actions"><button class="button primary" type="submit">Apply filters</button><a class="button secondary" href="{% url 'organization_list' %}">Clear</a></div>
+</form>
+
 <section class="panel table-panel">
   <div class="data-table organization-table" role="table" aria-label="Participating organizations">
     <div class="data-row data-head" role="row"><span>Organization</span><span>Authority</span><span>Instructors</span><span>Training</span><span>Admins</span><span>Status</span><span>Actions</span></div>
@@ -25,4 +32,11 @@
     {% empty %}<div class="empty-state">No organizations have been added.</div>{% endfor %}
   </div>
 </section>
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="Organization pages">
+  {% if page_obj.has_previous %}<a class="button secondary" href="?q={{ search|urlencode }}&county={{ selected_county|urlencode }}&kind={{ selected_kind|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} results</span>
+  {% if page_obj.has_next %}<a class="button secondary" href="?q={{ search|urlencode }}&county={{ selected_county|urlencode }}&kind={{ selected_kind|urlencode }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

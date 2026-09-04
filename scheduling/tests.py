@@ -1435,6 +1435,39 @@ class OrganizationManagementTests(TestCase):
         self.assertTrue(organization.active)
 
     @override_settings(DEBUG=False)
+    def test_organization_directory_is_paginated_and_searchable(self):
+        self.client.force_login(self.state_admin)
+
+        first_page = self.client.get(reverse("organization_list"))
+        search = self.client.get(reverse("organization_list"), {"q": "Brushton"})
+
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(len(first_page.context["organizations"]), 50)
+        self.assertGreater(first_page.context["page_obj"].paginator.num_pages, 1)
+        self.assertContains(first_page, "Name, former name, short name, or FDID")
+        self.assertContains(search, "Brushton Fire Department")
+        self.assertNotContains(search, "Albany Fire Department")
+
+    @override_settings(DEBUG=False)
+    def test_organization_directory_can_filter_departments_by_county(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.get(
+            reverse("organization_list"),
+            {"county": "Jefferson", "kind": Organization.Kind.AGENCY},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["organizations"])
+        self.assertTrue(
+            all(
+                organization.county_name == "Jefferson"
+                and organization.kind == Organization.Kind.AGENCY
+                for organization in response.context["organizations"]
+            )
+        )
+
+    @override_settings(DEBUG=False)
     def test_state_administrator_can_choose_any_county_when_creating_instructor(self):
         self.client.force_login(self.state_admin)
 

@@ -8,6 +8,7 @@
   <title>{% block title %}NYSFIRETOOLS Fire Training Scheduler{% endblock %}</title>
   <link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="{% static 'js/organization-picker.js' %}" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -53,7 +54,7 @@
           {% if user.is_authenticated %}
           <div class="user-chip">
             <span class="avatar">{{ user.first_name|first|default:"U" }}{{ user.last_name|first }}</span>
-            <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}Site administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
+            <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}Global administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
           </div>
           <div class="account-actions">
             {% if has_administration_access %}<a class="text-link" href="{% url 'administration' %}">Administration</a>{% endif %}
