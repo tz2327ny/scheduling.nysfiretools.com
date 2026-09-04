@@ -4,6 +4,7 @@ from . import views
 
 
 urlpatterns = [
+    path("logout/", views.nysfiretools_full_sign_out, name="logout"),
     path("nysfiretools/authorize/", views.nysfiretools_sso_authorize, name="nysfiretools_sso_authorize"),
     path("nysfiretools/token/", views.nysfiretools_sso_token, name="nysfiretools_sso_token"),
     path("nysfiretools/sign-out/", views.nysfiretools_sso_sign_out, name="nysfiretools_sso_sign_out"),

@@ -984,11 +984,31 @@ class InstructorAccountWorkflowTests(TestCase):
         application.user.refresh_from_db()
         self.assertFalse(application.user.is_active)
 
-    def test_sign_out_ends_the_authenticated_session(self):
+    @override_settings(
+        NYSFIRETOOLS_MAIN_ORIGIN="https://www.nysfiretools.com",
+        NYSFIRETOOLS_SSO_CLIENT_SECRET="test-shared-secret-with-sufficient-length",
+    )
+    def test_sign_out_ends_every_nysfiretools_session(self):
         self.client.force_login(self.state_admin)
 
         response = self.client.post(reverse("logout"))
 
-        self.assertRedirects(response, reverse("login"))
+        self.assertEqual(response.status_code, 302)
+        parsed = urlparse(response["Location"])
+        self.assertEqual(
+            f"{parsed.scheme}://{parsed.netloc}{parsed.path}",
+            "https://www.nysfiretools.com/burn-plans/sso/scheduler-sign-out",
+        )
+        query = parse_qs(parsed.query)
+        expires = query["expires"][0]
+        return_to = query["return_to"][0]
+        expected = hmac.new(
+            b"test-shared-secret-with-sufficient-length",
+            f"{expires}:{return_to}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        self.assertEqual(query["signature"][0], expected)
+        self.assertEqual(return_to, "/login")
+        self.assertNotIn("_auth_user_id", self.client.session)
         response = self.client.get(reverse("user_list"))
         self.assertRedirects(response, f"{reverse('login')}?next={reverse('user_list')}")

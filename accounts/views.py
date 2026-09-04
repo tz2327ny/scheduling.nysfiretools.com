@@ -168,6 +168,29 @@ def nysfiretools_sso_sign_out(request):
     return redirect(f"{settings.NYSFIRETOOLS_MAIN_ORIGIN}{return_path}")
 
 
+@require_POST
+def nysfiretools_full_sign_out(request):
+    """End Scheduler access, then clear the main-site access layers."""
+    logout(request)
+    configured_secret = settings.NYSFIRETOOLS_SSO_CLIENT_SECRET
+    if not configured_secret:
+        return redirect("login")
+
+    expires = str(int(timezone.now().timestamp()) + 60)
+    return_path = "/login"
+    signature = hmac.new(
+        configured_secret.encode("utf-8"),
+        f"{expires}:{return_path}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    query = urlencode(
+        {"expires": expires, "return_to": return_path, "signature": signature}
+    )
+    return redirect(
+        f"{settings.NYSFIRETOOLS_MAIN_ORIGIN}/burn-plans/sso/scheduler-sign-out?{query}"
+    )
+
+
 def state_admin_required(view_func):
     @wraps(view_func)
     @login_required
