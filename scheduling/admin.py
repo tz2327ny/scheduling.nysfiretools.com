@@ -12,6 +12,7 @@ from .models import (
     NotificationDelivery,
     NotificationPreference,
     Organization,
+    OrganizationAlias,
     RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
@@ -20,9 +21,16 @@ from .models import (
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("name", "kind", "active", "display_order")
-    list_editable = ("active", "display_order")
-    list_filter = ("kind", "active")
+    list_display = ("name", "kind", "county_name", "fdid_code", "lifecycle_status", "display_order")
+    list_editable = ("display_order",)
+    list_filter = ("kind", "lifecycle_status", "county_name")
+    search_fields = ("name", "short_name", "fdid_code", "aliases__name")
+
+
+@admin.register(OrganizationAlias)
+class OrganizationAliasAdmin(admin.ModelAdmin):
+    list_display = ("name", "organization", "county_name", "source_fdid_code")
+    search_fields = ("name", "organization__name", "source_fdid_code")
 
 
 @admin.register(Course)

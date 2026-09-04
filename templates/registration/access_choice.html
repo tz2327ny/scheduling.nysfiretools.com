@@ -1,0 +1,16 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Create a NYSFIRETOOLS account</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body class="login-page">
+  <main class="login-card registration-card">
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>One account for all tools</span></div></div>
+    <div class="login-copy"><p class="eyebrow">Choose the access you need</p><h1>Create your NYSFIRETOOLS account</h1><p>You will use one email and password across NYSFIRETOOLS. Scheduler enrollment is only required when you want to participate in training scheduling.</p></div>
+    <div class="metric-grid">
+      <a class="metric-card" href="{% url 'general_register' %}"><span>General tools</span><strong>Library and planning access</strong><small>Request access to the Burn Plan Library, Site Plan Builder, and department-logo submission.</small></a>
+      <a class="metric-card" href="{% url 'instructor_register' %}"><span>Training participation</span><strong>Join the Scheduler</strong><small>Create the same NYSFIRETOOLS account and submit your instructor information for Scheduler review.</small></a>
+    </div>
+    <p class="login-alternate">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+  </main>
+</body>
+</html>

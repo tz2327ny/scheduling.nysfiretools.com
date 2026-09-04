@@ -5,7 +5,7 @@
 <body class="login-page">
   <main class="login-card registration-card">
     <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Account Access</span></div></div>
-    <div class="login-copy"><p class="eyebrow">NYSFIRETOOLS access request</p><h1>Create your NYSFIRETOOLS account</h1><p>Your SFI, CFI, or MFI number is required. Your account will remain inactive until a Site Administrator reviews your identity and course authorizations.</p></div>
+    <div class="login-copy"><p class="eyebrow">Scheduler enrollment</p><h1>Create an account and join the Scheduler</h1><p>Your SFI, CFI, or MFI number is required for Scheduler review. This creates one NYSFIRETOOLS account that also works with the Burn Plan Library and Site Plan Builder after approval.</p></div>
     <form method="post" novalidate>
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
@@ -28,7 +28,7 @@
       </div>
       <button class="button primary" type="submit">Submit access request</button>
     </form>
-    <p class="login-alternate">Already have access? <a href="{% url 'login' %}">Sign in</a></p>
+    <p class="login-alternate">Already have a NYSFIRETOOLS account? <a href="{% url 'login' %}">Sign in first, then join the Scheduler</a></p>
     <p class="independence-note"><strong>Independent tool:</strong> This is not an official New York State or State Fire system and has not been formally approved or endorsed.</p>
   </main>
   <script>document.querySelectorAll('[data-course-selector]').forEach(function(selector){var search=selector.querySelector('[data-course-search]');var labels=selector.querySelectorAll('.course-choice-list label');search.addEventListener('input',function(){var query=search.value.toLowerCase();labels.forEach(function(label){label.closest('div').hidden=!label.textContent.toLowerCase().includes(query);});});});</script>

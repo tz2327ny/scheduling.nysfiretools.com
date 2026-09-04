@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Join the Scheduler · NYSFIRETOOLS{% endblock %}
+{% block page_title %}Join the Fire Training Scheduler{% endblock %}
+{% block content %}
+<form class="form-shell" method="post" novalidate>{% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Use your existing account</p><h2>Request Scheduler enrollment</h2><p>Your NYSFIRETOOLS sign-in stays the same. An administrator will review your instructor identity and claimed course authorizations.</p></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}<label class="field {% if field.name == 'home_organization' or field.name == 'travel_notes' or field.name == 'requested_courses' %}wide{% endif %}"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>{% endfor %}
+    </div>
+  </section>
+  <div class="form-actions"><button class="button primary" type="submit">Submit Scheduler request</button></div>
+</form>
+{% endblock %}

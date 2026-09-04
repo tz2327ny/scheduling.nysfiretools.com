@@ -8,10 +8,22 @@ from django.db.models import Q
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
 from scheduling.services import sync_verified_course_authorizations
 
-from .models import InstructorApplication, UserOrganizationRole
+from .models import AccountProfile, InstructorApplication, UserOrganizationRole
 
 
 User = get_user_model()
+
+
+class OrganizationChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, organization):
+        return organization.authority_label
+
+
+def active_organizations():
+    return Organization.objects.filter(
+        active=True,
+        lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+    ).select_related("parent").order_by("kind", "county_name", "name")
 
 
 class EmailAuthenticationForm(AuthenticationForm):
@@ -29,10 +41,10 @@ class InstructorRegistrationForm(UserCreationForm):
         help_text="Required for State verification and matching an existing instructor record.",
     )
     phone = forms.CharField(max_length=30, required=False)
-    home_organization = forms.ModelChoiceField(
-        label="County or State assignment",
+    home_organization = OrganizationChoiceField(
+        label="Home agency, county, or State assignment",
         queryset=Organization.objects.none(),
-        help_text="Choose the organization you are assigned to. Academy-assigned instructors should choose the New York State Academy of Fire Science.",
+        help_text="Choose your normal fire department, county program, or State assignment.",
     )
     travel_preference = forms.ChoiceField(choices=Instructor.TravelPreference.choices)
     travel_notes = forms.CharField(
@@ -58,7 +70,7 @@ class InstructorRegistrationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["home_organization"].queryset = Organization.objects.filter(active=True)
+        self.fields["home_organization"].queryset = active_organizations()
         self.fields["requested_courses"].queryset = Course.objects.filter(active=True).order_by(
             "name", "record_number"
         )
@@ -100,6 +112,163 @@ class InstructorRegistrationForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class GeneralAccessRegistrationForm(UserCreationForm):
+    email = forms.EmailField(label="Email address")
+    organization = OrganizationChoiceField(
+        label="Department, agency, or organization",
+        queryset=Organization.objects.none(),
+        required=False,
+        help_text="Choose the existing official entry whenever possible.",
+    )
+    requested_organization_name = forms.CharField(
+        label="Organization not listed",
+        max_length=180,
+        required=False,
+        help_text="Enter a name only when the correct organization is not available. An administrator will review it rather than creating a duplicate.",
+    )
+    access_reason = forms.CharField(
+        label="Why are you requesting access?",
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="For example: Burn Plan Library, Site Plan Builder, or department-logo submission.",
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("first_name", "last_name", "email")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["organization"].queryset = active_organizations()
+        self.fields["first_name"].required = True
+        self.fields["last_name"].required = True
+        self.order_fields(
+            [
+                "first_name",
+                "last_name",
+                "email",
+                "organization",
+                "requested_organization_name",
+                "access_reason",
+                "password1",
+                "password2",
+            ]
+        )
+
+    def clean_email(self):
+        email = User.objects.normalize_email(self.cleaned_data["email"]).strip().lower()
+        if User.objects.filter(Q(username__iexact=email) | Q(email__iexact=email)).exists():
+            raise forms.ValidationError("An account already exists for this email address.")
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        if not cleaned.get("organization") and not cleaned.get("requested_organization_name", "").strip():
+            self.add_error("organization", "Choose your organization or enter its name below.")
+        if cleaned.get("organization") and cleaned.get("requested_organization_name", "").strip():
+            self.add_error("requested_organization_name", "Leave this blank when you selected an organization above.")
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = self.cleaned_data["email"]
+        user.email = self.cleaned_data["email"]
+        user.is_active = False
+        if commit:
+            user.save()
+            AccountProfile.objects.create(
+                user=user,
+                access_status=AccountProfile.AccessStatus.PENDING,
+                signup_source=AccountProfile.SignupSource.GENERAL,
+                scheduler_status=AccountProfile.SchedulerStatus.NOT_ENROLLED,
+                organization=self.cleaned_data.get("organization"),
+                requested_organization_name=self.cleaned_data.get("requested_organization_name", "").strip(),
+                access_reason=self.cleaned_data["access_reason"].strip(),
+            )
+        return user
+
+
+class SchedulerEnrollmentForm(forms.Form):
+    sfi_number = forms.CharField(
+        label="SFI, CFI, or MFI number",
+        max_length=30,
+        help_text="Required for State verification and matching an existing instructor record.",
+    )
+    phone = forms.CharField(max_length=30, required=False)
+    home_organization = OrganizationChoiceField(
+        label="Home agency, county, or State assignment",
+        queryset=Organization.objects.none(),
+        help_text="Choose your normal fire department, county program, or State assignment.",
+    )
+    travel_preference = forms.ChoiceField(choices=Instructor.TravelPreference.choices)
+    travel_notes = forms.CharField(
+        required=False,
+        max_length=250,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+    requested_courses = forms.ModelMultipleChoiceField(
+        label="Courses you are authorized to teach — review required",
+        queryset=Course.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, user, application=None, **kwargs):
+        self.user = user
+        self.application = application
+        super().__init__(*args, **kwargs)
+        self.fields["home_organization"].queryset = active_organizations()
+        self.fields["requested_courses"].queryset = Course.objects.filter(active=True).order_by(
+            "name", "record_number"
+        )
+        if application and not self.is_bound:
+            self.initial.update(
+                {
+                    "sfi_number": application.sfi_number,
+                    "phone": application.phone,
+                    "home_organization": application.home_organization_id,
+                    "travel_preference": application.travel_preference,
+                    "travel_notes": application.travel_notes,
+                    "requested_courses": application.requested_courses.values_list("pk", flat=True),
+                }
+            )
+
+    def clean_sfi_number(self):
+        return self.cleaned_data["sfi_number"].strip().upper()
+
+    def save(self):
+        application = self.application or InstructorApplication(user=self.user)
+        application.sfi_number = self.cleaned_data["sfi_number"]
+        application.phone = self.cleaned_data["phone"]
+        application.home_organization = self.cleaned_data["home_organization"]
+        application.travel_preference = self.cleaned_data["travel_preference"]
+        application.travel_notes = self.cleaned_data["travel_notes"]
+        application.status = InstructorApplication.Status.PENDING
+        application.reviewed_at = None
+        application.reviewed_by = None
+        application.save()
+        application.requested_courses.set(self.cleaned_data["requested_courses"])
+        profile, _ = AccountProfile.objects.get_or_create(
+            user=self.user,
+            defaults={
+                "access_status": AccountProfile.AccessStatus.ACTIVE,
+                "signup_source": AccountProfile.SignupSource.LEGACY,
+            },
+        )
+        profile.scheduler_status = AccountProfile.SchedulerStatus.PENDING
+        profile.organization = self.cleaned_data["home_organization"]
+        profile.requested_organization_name = ""
+        profile.save(
+            update_fields=(
+                "scheduler_status",
+                "organization",
+                "requested_organization_name",
+                "updated_at",
+            )
+        )
+        return application
 
 
 def _normalized_match_value(value):
@@ -248,10 +417,8 @@ class StateUserForm(forms.ModelForm):
     def __init__(self, *args, acting_user=None, **kwargs):
         self.acting_user = acting_user
         super().__init__(*args, **kwargs)
-        self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
-        self.fields["instructor_home_organization"].queryset = Organization.objects.filter(
-            active=True
-        )
+        self.fields["organization_admins"].queryset = active_organizations()
+        self.fields["instructor_home_organization"].queryset = active_organizations()
         self.fields["verified_courses"].queryset = Course.objects.filter(
             active=True
         ).order_by("name", "record_number")
@@ -413,10 +580,8 @@ class StateUserCreateForm(UserCreationForm):
     def __init__(self, *args, acting_user=None, **kwargs):
         self.acting_user = acting_user
         super().__init__(*args, **kwargs)
-        self.fields["organization_admins"].queryset = Organization.objects.filter(active=True)
-        self.fields["instructor_home_organization"].queryset = Organization.objects.filter(
-            active=True
-        )
+        self.fields["organization_admins"].queryset = active_organizations()
+        self.fields["instructor_home_organization"].queryset = active_organizations()
         self.fields["verified_courses"].queryset = Course.objects.filter(
             active=True
         ).order_by("name", "record_number")

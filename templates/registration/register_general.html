@@ -1,0 +1,19 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Request NYSFIRETOOLS access</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
+<body class="login-page">
+  <main class="login-card registration-card">
+    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>General access</span></div></div>
+    <div class="login-copy"><p class="eyebrow">Library and planning tools</p><h1>Request a NYSFIRETOOLS account</h1><p>This request does not enroll you in the Fire Training Scheduler. You can join the Scheduler later using this same account.</p></div>
+    <form method="post" novalidate>{% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="registration-grid">
+        {% for field in form %}<label class="field {% if field.name == 'organization' or field.name == 'requested_organization_name' or field.name == 'access_reason' %}wide{% endif %}"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>{% endfor %}
+      </div>
+      <button class="button primary" type="submit">Submit access request</button>
+    </form>
+    <p class="login-alternate"><a href="{% url 'account_access_start' %}">Choose a different account type</a> · <a href="{% url 'login' %}">Sign in</a></p>
+  </main>
+</body>
+</html>

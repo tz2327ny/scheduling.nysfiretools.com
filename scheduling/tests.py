@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.models import UserOrganizationRole
+from accounts.models import AccountProfile, UserOrganizationRole
 from scheduling.forms import InstructorAssignmentForm
 from scheduling.models import (
     AvailabilityBlock,
@@ -24,7 +24,7 @@ from scheduling.models import (
     TrainingEvent,
     TrainingSession,
 )
-from scheduling.permissions import can_manage_organization
+from scheduling.permissions import can_manage_organization, managed_organizations
 from scheduling.services import eligible_instructors_for_session
 from scheduling.notifications import deliver_notification, notify_assignment
 from scheduling.unit_staffing import sync_event_units
@@ -1483,3 +1483,167 @@ class OrganizationManagementTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context["form"], "name", "An organization with this name already exists.")
         self.assertFormError(response.context["form"], "short_name", "An organization with this short name already exists.")
+
+    def test_same_agency_name_is_allowed_in_different_counties(self):
+        lewis = Organization.objects.get(name="Lewis County")
+
+        first = Organization.objects.create(
+            name="Example Fire Department",
+            short_name="Example Jefferson",
+            kind=Organization.Kind.AGENCY,
+            county_name="Jefferson",
+            parent=self.jefferson,
+        )
+        second = Organization.objects.create(
+            name="Example Fire Department",
+            short_name="Example Lewis",
+            kind=Organization.Kind.AGENCY,
+            county_name="Lewis",
+            parent=lewis,
+        )
+
+        self.assertNotEqual(first.pk, second.pk)
+
+    def test_county_administrator_scope_includes_agencies_in_that_county(self):
+        county_admin = get_user_model().objects.create_user(
+            username="jefferson-admin@example.com",
+            password="test-password",
+        )
+        UserOrganizationRole.objects.create(
+            user=county_admin,
+            organization=self.jefferson,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+        jefferson_agency = Organization.objects.filter(
+            kind=Organization.Kind.AGENCY,
+            county_name="Jefferson",
+        ).first()
+        lewis_agency = Organization.objects.filter(
+            kind=Organization.Kind.AGENCY,
+            county_name="Lewis",
+        ).first()
+
+        scope = managed_organizations(county_admin)
+
+        self.assertTrue(scope.filter(pk=self.jefferson.pk).exists())
+        self.assertTrue(scope.filter(pk=jefferson_agency.pk).exists())
+        self.assertFalse(scope.filter(pk=lewis_agency.pk).exists())
+
+    def test_state_administrator_role_has_statewide_organization_scope(self):
+        state_authority = Organization.objects.get(kind=Organization.Kind.STATE)
+        state_admin = get_user_model().objects.create_user(
+            username="state-role-admin@example.com",
+            password="test-password",
+        )
+        UserOrganizationRole.objects.create(
+            user=state_admin,
+            organization=state_authority,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+
+        scope = managed_organizations(state_admin)
+
+        self.assertEqual(
+            scope.count(),
+            Organization.objects.filter(
+                active=True,
+                lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+            ).count(),
+        )
+
+    @override_settings(DEBUG=False)
+    def test_county_administrator_has_one_central_administration_page(self):
+        county_admin = get_user_model().objects.create_user(
+            username="central-admin@example.com",
+            password="test-password",
+        )
+        UserOrganizationRole.objects.create(
+            user=county_admin,
+            organization=self.jefferson,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+        self.client.force_login(county_admin)
+
+        response = self.client.get(reverse("administration"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Administration")
+        self.assertContains(response, "Organizations you manage")
+        self.assertContains(response, self.jefferson.name)
+
+    @override_settings(DEBUG=False)
+    def test_merge_transfers_current_relationships_but_preserves_training_history(self):
+        source = Organization.objects.create(
+            name="Old Example Fire Department",
+            short_name="Old Example",
+            kind=Organization.Kind.AGENCY,
+            county_name="Jefferson",
+            parent=self.jefferson,
+        )
+        target = Organization.objects.create(
+            name="New Example Fire District",
+            short_name="New Example",
+            kind=Organization.Kind.AGENCY,
+            county_name="Jefferson",
+            parent=self.jefferson,
+        )
+        source.aliases.create(
+            name="Former Example Fire Company",
+            normalized_name="formerexamplefirecompany",
+            county_name="Jefferson",
+        )
+        account = get_user_model().objects.create_user(
+            username="old-example@example.com",
+            email="old-example@example.com",
+            password="test-password",
+        )
+        profile = AccountProfile.objects.create(
+            user=account,
+            access_status=AccountProfile.AccessStatus.ACTIVE,
+            organization=source,
+        )
+        role = UserOrganizationRole.objects.create(
+            user=account,
+            organization=source,
+            role=UserOrganizationRole.Role.ADMINISTRATOR,
+        )
+        instructor = Instructor.objects.create(
+            user=account,
+            first_name="Old",
+            last_name="Member",
+            email=account.email,
+            home_organization=source,
+        )
+        course = Course.objects.create(record_number="99-99-9911", name="Merger Test")
+        event = TrainingEvent.objects.create(
+            course=course,
+            host_organization=source,
+            location_name="Original station",
+        )
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(
+            reverse("organization_merge", args=[source.pk]),
+            {"target": target.pk},
+        )
+
+        self.assertRedirects(response, reverse("organization_list"))
+        source.refresh_from_db()
+        profile.refresh_from_db()
+        instructor.refresh_from_db()
+        event.refresh_from_db()
+        self.assertEqual(source.lifecycle_status, Organization.LifecycleStatus.MERGED)
+        self.assertEqual(source.successor, target)
+        self.assertEqual(profile.organization, target)
+        self.assertEqual(instructor.home_organization, target)
+        self.assertEqual(event.host_organization, source)
+        self.assertFalse(UserOrganizationRole.objects.filter(pk=role.pk).exists())
+        self.assertTrue(
+            UserOrganizationRole.objects.filter(
+                user=account,
+                organization=target,
+                role=UserOrganizationRole.Role.ADMINISTRATOR,
+            ).exists()
+        )
+        self.assertTrue(target.aliases.filter(name=source.name).exists())
+        self.assertTrue(target.aliases.filter(name="Former Example Fire Company").exists())

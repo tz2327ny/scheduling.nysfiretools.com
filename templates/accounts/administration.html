@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Administration · NYSFIRETOOLS{% endblock %}
+{% block page_title %}Administration{% endblock %}
+
+{% block content %}
+<section class="page-actions">
+  <p>Manage NYSFIRETOOLS accounts, authority records, training configuration, and approvals from one place.</p>
+</section>
+
+<section class="metric-grid">
+  {% if user.is_superuser %}
+  <a class="metric-card" href="{% url 'user_list' %}"><span>Accounts and approvals</span><strong>Users</strong><small>Approve access, review Scheduler enrollment, assign roles, and manage passwords.</small></a>
+  <a class="metric-card" href="{% url 'organization_list' %}"><span>Authority directory</span><strong>Organizations</strong><small>Manage State, county, academy, department, and merger records.</small></a>
+  <a class="metric-card" href="{% url 'course_list' %}"><span>Training configuration</span><strong>Courses</strong><small>Maintain the course library and unit staffing requirements.</small></a>
+  {% else %}
+  <a class="metric-card" href="{% url 'schedule' %}"><span>Your administrative scope</span><strong>{{ managed_organization_count }} organization{{ managed_organization_count|pluralize }}</strong><small>Manage training and staffing within the authority assigned to your account.</small></a>
+  <a class="metric-card" href="{% url 'instructor_list' %}"><span>People</span><strong>Instructors</strong><small>Review instructors available within the Scheduler.</small></a>
+  {% endif %}
+</section>
+
+{% if managed_organizations %}
+<section class="panel">
+  <div class="panel-header"><div><p class="eyebrow">Assigned authority</p><h2>Organizations you manage</h2></div></div>
+  <div class="data-table" role="table">
+    {% for organization in managed_organizations %}
+    <div class="data-row" role="row"><span><strong>{{ organization.name }}</strong><small>{{ organization.get_kind_display }}{% if organization.county_name %} · {{ organization.county_name }} County{% endif %}</small></span></div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

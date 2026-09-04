@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Merge {{ source.name }} · NYSFIRETOOLS{% endblock %}
+{% block page_title %}Merge organization{% endblock %}
+{% block content %}
+<form class="form-shell narrow" method="post" novalidate>{% csrf_token %}
+  <section class="panel form-panel">
+    <div class="panel-header"><div><p class="eyebrow">Agency succession</p><h2>Merge {{ source.name }}</h2><p>Current instructors, account affiliations, aliases, and administrator roles will move to the successor. Historical training remains attached to {{ source.name }}.</p></div></div>
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}<label class="field"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<em>{{ error }}</em>{% endfor %}</label>{% endfor %}
+  </section>
+  <div class="form-actions"><a class="button secondary" href="{% url 'organization_list' %}">Cancel</a><button class="button primary" type="submit">Merge into successor</button></div>
+</form>
+{% endblock %}

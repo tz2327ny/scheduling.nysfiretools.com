@@ -5,22 +5,22 @@
 
 {% block content %}
 <section class="page-actions">
-  <p>Add participating counties and manage the State Academy entry. Inactive organizations remain attached to historical records.</p>
+  <p>Maintain State, county, academy, and department authorities. Department records are initialized from the New York State Fire Department Directory; inactive and merged entries remain attached to historical records.</p>
   <a class="button primary" href="{% url 'organization_create' %}">＋ Add organization</a>
 </section>
 
 <section class="panel table-panel">
   <div class="data-table organization-table" role="table" aria-label="Participating organizations">
-    <div class="data-row data-head" role="row"><span>Organization</span><span>Type</span><span>Instructors</span><span>Training</span><span>Admins</span><span>Status</span><span>Actions</span></div>
+    <div class="data-row data-head" role="row"><span>Organization</span><span>Authority</span><span>Instructors</span><span>Training</span><span>Admins</span><span>Status</span><span>Actions</span></div>
     {% for organization in organizations %}
     <div class="data-row" role="row">
-      <span data-label="Organization"><strong>{{ organization.name }}</strong><small>{{ organization.short_name }}</small></span>
-      <span data-label="Type">{{ organization.get_kind_display }}</span>
+      <span data-label="Organization"><strong>{{ organization.name }}</strong><small>{{ organization.short_name }}{% if organization.fdid_code %} · FDID {{ organization.fdid_code }}{% endif %}</small></span>
+      <span data-label="Authority">{{ organization.get_kind_display }}<small>{% if organization.parent %}Under {{ organization.parent.name }}{% elif organization.county_name %}{{ organization.county_name }} County{% endif %}</small></span>
       <span data-label="Instructors">{{ organization.instructor_count }}</span>
       <span data-label="Training">{{ organization.training_count }}</span>
       <span data-label="Admins">{{ organization.administrator_count }}</span>
-      <span data-label="Status"><i class="status {% if organization.active %}available{% else %}inactive{% endif %}">{% if organization.active %}Active{% else %}Inactive{% endif %}</i></span>
-      <span data-label="Actions"><a class="text-link" href="{% url 'organization_edit' organization.pk %}">Edit</a></span>
+      <span data-label="Status"><i class="status {% if organization.active %}available{% else %}inactive{% endif %}">{{ organization.get_lifecycle_status_display }}</i>{% if organization.successor %}<small>Now {{ organization.successor.name }}</small>{% endif %}</span>
+      <span data-label="Actions"><a class="text-link" href="{% url 'organization_edit' organization.pk %}">Edit</a>{% if organization.is_selectable %} · <a class="text-link" href="{% url 'organization_merge' organization.pk %}">Merge</a>{% endif %}</span>
     </div>
     {% empty %}<div class="empty-state">No organizations have been added.</div>{% endfor %}
   </div>

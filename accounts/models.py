@@ -2,6 +2,72 @@ from django.conf import settings
 from django.db import models
 
 
+class AccountProfile(models.Model):
+    """Site-wide access state kept separate from optional Scheduler enrollment."""
+
+    class AccessStatus(models.TextChoices):
+        PENDING = "pending", "Pending approval"
+        ACTIVE = "active", "Active"
+        REJECTED = "rejected", "Not approved"
+        SUSPENDED = "suspended", "Suspended"
+
+    class SignupSource(models.TextChoices):
+        GENERAL = "general", "NYSFIRETOOLS protected tools"
+        SCHEDULER = "scheduler", "Fire Training Scheduler"
+        ADMIN = "admin", "Administrator-created"
+        LEGACY = "legacy", "Existing account"
+
+    class SchedulerStatus(models.TextChoices):
+        NOT_ENROLLED = "not_enrolled", "Not enrolled"
+        PENDING = "pending", "Enrollment pending"
+        ACTIVE = "active", "Enrolled"
+        REJECTED = "rejected", "Enrollment not approved"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="nysfiretools_profile",
+    )
+    access_status = models.CharField(
+        max_length=16,
+        choices=AccessStatus.choices,
+        default=AccessStatus.PENDING,
+        db_index=True,
+    )
+    signup_source = models.CharField(
+        max_length=16,
+        choices=SignupSource.choices,
+        default=SignupSource.GENERAL,
+    )
+    scheduler_status = models.CharField(
+        max_length=16,
+        choices=SchedulerStatus.choices,
+        default=SchedulerStatus.NOT_ENROLLED,
+        db_index=True,
+    )
+    organization = models.ForeignKey(
+        "scheduling.Organization",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="account_profiles",
+    )
+    requested_organization_name = models.CharField(max_length=180, blank=True)
+    access_reason = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user} — {self.get_access_status_display()}"
+
+    @property
+    def organization_name(self):
+        return self.organization.name if self.organization_id else self.requested_organization_name
+
+
 class UserOrganizationRole(models.Model):
     """Scopes an administrator to the organization they are allowed to manage."""
 

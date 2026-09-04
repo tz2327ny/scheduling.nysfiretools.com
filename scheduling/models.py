@@ -6,22 +6,136 @@ from django.db import models
 from django.utils import timezone
 
 
+def normalize_organization_name(value):
+    """Return a stable comparison key without changing the displayed name."""
+    return "".join(character for character in (value or "").casefold() if character.isalnum())
+
+
 class Organization(models.Model):
     class Kind(models.TextChoices):
+        STATE = "state", "Statewide authority"
         COUNTY = "county", "County"
         ACADEMY = "academy", "State academy"
+        AGENCY = "agency", "Fire department / agency"
 
-    name = models.CharField(max_length=140, unique=True)
+    class LifecycleStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        MERGED = "merged", "Merged into another agency"
+        RETIRED = "retired", "Retired"
+
+    name = models.CharField(max_length=140)
     short_name = models.CharField(max_length=50)
     kind = models.CharField(max_length=16, choices=Kind.choices)
+    normalized_name = models.CharField(max_length=180, default="", db_index=True)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="children",
+        help_text="County or statewide authority responsible for this organization.",
+    )
+    county_name = models.CharField(max_length=60, blank=True, db_index=True)
+    fdid_code = models.CharField("FDID code", max_length=12, blank=True, db_index=True)
+    address = models.CharField(max_length=180, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=2, blank=True, default="NY")
+    zip_code = models.CharField(max_length=10, blank=True)
+    phone_number = models.CharField(max_length=24, blank=True)
+    lifecycle_status = models.CharField(
+        max_length=16,
+        choices=LifecycleStatus.choices,
+        default=LifecycleStatus.ACTIVE,
+        db_index=True,
+    )
+    successor = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="predecessors",
+        help_text="The active organization that succeeded this merged or retired entry.",
+    )
+    directory_source = models.CharField(max_length=80, blank=True)
     active = models.BooleanField(default=True)
     display_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        ordering = ("display_order", "name")
+        ordering = ("display_order", "kind", "county_name", "name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("kind", "county_name", "normalized_name"),
+                name="unique_organization_name_in_scope",
+            ),
+            models.UniqueConstraint(
+                fields=("county_name", "fdid_code"),
+                condition=~models.Q(fdid_code=""),
+                name="unique_organization_fdid_in_county",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.name = self.name.strip()
+        self.short_name = self.short_name.strip()
+        self.county_name = self.county_name.strip()
+        self.fdid_code = self.fdid_code.strip().upper()
+        self.normalized_name = normalize_organization_name(self.name)
+        if self.successor_id and self.successor_id == self.pk:
+            raise ValidationError({"successor": "An organization cannot succeed itself."})
+        if self.lifecycle_status == self.LifecycleStatus.ACTIVE and self.successor_id:
+            raise ValidationError({"successor": "An active organization cannot have a successor."})
+        if self.kind == self.Kind.AGENCY and not self.county_name:
+            raise ValidationError({"county_name": "Fire departments and agencies require a county."})
+
+    def save(self, *args, **kwargs):
+        self.normalized_name = normalize_organization_name(self.name)
+        self.active = self.lifecycle_status == self.LifecycleStatus.ACTIVE
+        return super().save(*args, **kwargs)
+
+    @property
+    def is_selectable(self):
+        return self.active and self.lifecycle_status == self.LifecycleStatus.ACTIVE
+
+    @property
+    def authority_label(self):
+        if self.kind == self.Kind.AGENCY and self.county_name:
+            return f"{self.name} — {self.county_name} County"
+        return self.name
 
     def __str__(self):
-        return self.name
+        return self.authority_label
+
+
+class OrganizationAlias(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="aliases",
+    )
+    name = models.CharField(max_length=140)
+    normalized_name = models.CharField(max_length=180, db_index=True)
+    county_name = models.CharField(max_length=60, blank=True, db_index=True)
+    source_fdid_code = models.CharField("Former FDID code", max_length=12, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("county_name", "name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("county_name", "normalized_name"),
+                name="unique_organization_alias_in_county",
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip()
+        self.county_name = self.county_name.strip()
+        self.normalized_name = normalize_organization_name(self.name)
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} → {self.organization.name}"
 
 
 class Course(models.Model):

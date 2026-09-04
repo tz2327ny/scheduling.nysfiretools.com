@@ -10,6 +10,7 @@ urlpatterns = [
     path("organizations/", views.organization_list, name="organization_list"),
     path("organizations/new/", views.organization_create, name="organization_create"),
     path("organizations/<int:pk>/edit/", views.organization_edit, name="organization_edit"),
+    path("organizations/<int:pk>/merge/", views.organization_merge, name="organization_merge"),
     path("courses/", views.course_list, name="course_list"),
     path("courses/new/", views.course_create, name="course_create"),
     path("courses/<int:pk>/edit/", views.course_edit, name="course_edit"),

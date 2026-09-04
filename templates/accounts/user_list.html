@@ -5,7 +5,7 @@
 
 {% block content %}
 <section class="page-actions">
-  <p>Site administrators approve registrations and control login access. Instructor directory records can exist without login accounts.</p>
+  <p>Approve NYSFIRETOOLS access, review optional Scheduler enrollment, and control administrative roles from this central account directory.</p>
   <div class="toolbar-actions">
     <a class="button secondary" href="{% url 'instructor_create' %}">Add scheduling-only instructor</a>
     <a class="button primary" href="{% url 'user_create' %}">＋ Create login account</a>
@@ -13,7 +13,24 @@
 </section>
 
 <section class="panel approval-panel">
-  <div class="panel-header"><div><p class="eyebrow">State approval queue</p><h2>Pending instructor applications</h2></div><span class="queue-count">{{ pending_applications|length }}</span></div>
+  <div class="panel-header"><div><p class="eyebrow">NYSFIRETOOLS access queue</p><h2>Pending general access requests</h2></div><span class="queue-count">{{ pending_access_requests|length }}</span></div>
+  <div class="approval-list">
+    {% for profile in pending_access_requests %}
+    <article class="approval-row">
+      <span class="person-cell"><i class="avatar small">{{ profile.user.first_name|first }}{{ profile.user.last_name|first }}</i><span><strong>{{ profile.user.get_full_name }}</strong><small>{{ profile.user.email }}</small></span></span>
+      <span><strong>{{ profile.organization_name|default:"Organization not supplied" }}</strong><small>General NYSFIRETOOLS account</small></span>
+      <span><strong>Requested use</strong><small>{{ profile.access_reason|default:"No reason supplied" }}</small></span>
+      <span class="approval-actions">
+        <form method="post" action="{% url 'access_request_approve' profile.pk %}">{% csrf_token %}<button class="button primary" type="submit">Approve access</button></form>
+        <form method="post" action="{% url 'access_request_reject' profile.pk %}">{% csrf_token %}<button class="button secondary" type="submit">Not approved</button></form>
+      </span>
+    </article>
+    {% empty %}<div class="empty-state"><strong>No general access requests are waiting.</strong><p>Burn Plan Library and Site Plan Builder requests will appear here.</p></div>{% endfor %}
+  </div>
+</section>
+
+<section class="panel approval-panel">
+  <div class="panel-header"><div><p class="eyebrow">Scheduler enrollment queue</p><h2>Pending instructor applications</h2></div><span class="queue-count">{{ pending_applications|length }}</span></div>
   <div class="approval-list">
     {% for application in pending_applications %}
     <article class="approval-row">

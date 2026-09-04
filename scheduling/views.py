@@ -12,6 +12,8 @@ from django.views.decorators.http import require_POST
 from django.urls import reverse
 from django.utils import timezone
 
+from accounts.models import AccountProfile, InstructorApplication, UserOrganizationRole
+
 from .forms import (
     AvailabilityBlockForm,
     CourseForm,
@@ -21,6 +23,7 @@ from .forms import (
     InstructorForm,
     NotificationPreferenceForm,
     OrganizationForm,
+    OrganizationMergeForm,
     RecurringAvailabilityRuleForm,
     TrainingEventForm,
     TrainingSessionFormSet,
@@ -33,6 +36,7 @@ from .models import (
     InstructorAssignment,
     NotificationDelivery,
     Organization,
+    OrganizationAlias,
     RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
@@ -58,7 +62,10 @@ def health(request):
 @login_required_unless_debug
 def dashboard(request):
     now = timezone.now()
-    organizations = Organization.objects.filter(active=True)
+    organizations = Organization.objects.filter(
+        active=True,
+        lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+    ).exclude(kind=Organization.Kind.AGENCY)
     selected_values = request.GET.getlist("organization")
     show_all_organizations = request.GET.get("all") == "1" or not selected_values
     selected_organization_ids = set()
@@ -89,8 +96,20 @@ def dashboard(request):
         .order_by("next_session")
     )
     if not show_all_organizations:
+        selected_organizations = organizations.filter(pk__in=selected_organization_ids)
+        selected_counties = list(
+            selected_organizations.filter(kind=Organization.Kind.COUNTY).values_list(
+                "county_name", flat=True
+            )
+        )
+        host_organization_ids = Organization.objects.filter(
+            Q(pk__in=selected_organization_ids)
+            | Q(kind=Organization.Kind.AGENCY, county_name__in=selected_counties),
+            active=True,
+            lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+        ).values_list("pk", flat=True)
         upcoming_query = upcoming_query.filter(
-            host_organization_id__in=selected_organization_ids
+            host_organization_id__in=host_organization_ids
         )
     scoped_upcoming = list(upcoming_query)
     for event in scoped_upcoming:
@@ -171,7 +190,7 @@ def organization_list(request):
             filter=Q(user_roles__role="administrator"),
             distinct=True,
         ),
-    )
+    ).select_related("parent", "successor")
     return render(
         request,
         "scheduling/organization_list.html",
@@ -215,6 +234,66 @@ def organization_edit(request, pk):
 
 
 @login_required_unless_debug
+def organization_merge(request, pk):
+    require_course_manager(request.user)
+    source = get_object_or_404(
+        Organization.objects.select_related("successor"),
+        pk=pk,
+        lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+    )
+    form = OrganizationMergeForm(request.POST or None, source=source)
+    if request.method == "POST" and form.is_valid():
+        target = form.cleaned_data["target"]
+        with transaction.atomic():
+            source = Organization.objects.select_for_update().get(pk=source.pk)
+            target = Organization.objects.select_for_update().get(pk=target.pk)
+            for role in UserOrganizationRole.objects.filter(organization=source):
+                UserOrganizationRole.objects.get_or_create(
+                    user=role.user,
+                    organization=target,
+                    role=role.role,
+                )
+            UserOrganizationRole.objects.filter(organization=source).delete()
+            Instructor.objects.filter(home_organization=source).update(home_organization=target)
+            InstructorApplication.objects.filter(home_organization=source).update(home_organization=target)
+            AccountProfile.objects.filter(organization=source).update(organization=target)
+            for alias in list(source.aliases.all()):
+                OrganizationAlias.objects.update_or_create(
+                    county_name=alias.county_name,
+                    normalized_name=alias.normalized_name,
+                    defaults={
+                        "organization": target,
+                        "name": alias.name,
+                        "source_fdid_code": alias.source_fdid_code,
+                    },
+                )
+            source.aliases.all().delete()
+            OrganizationAlias.objects.update_or_create(
+                county_name=source.county_name,
+                normalized_name=source.normalized_name,
+                defaults={
+                    "organization": target,
+                    "name": source.name,
+                    "source_fdid_code": source.fdid_code,
+                },
+            )
+            source.lifecycle_status = Organization.LifecycleStatus.MERGED
+            source.successor = target
+            source.active = False
+            source.save(update_fields=("lifecycle_status", "successor", "active", "normalized_name"))
+        messages.success(
+            request,
+            f"{source.name} was merged into {target.name}. Historical training remains attached to the original record.",
+        )
+        return redirect("organization_list")
+    return render(
+        request,
+        "scheduling/organization_merge.html",
+        {"form": form, "source": source},
+    )
+
+
+@login_required_unless_debug
 def schedule(request):
     events = (
         TrainingEvent.objects.select_related("course", "host_organization")
@@ -233,7 +312,10 @@ def schedule(request):
         "scheduling/schedule.html",
         {
             "events": events,
-            "organizations": Organization.objects.filter(active=True),
+            "organizations": Organization.objects.filter(
+                active=True,
+                lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+            ),
             "status_choices": TrainingEvent.Status.choices,
             "selected_status": status or "",
             "selected_organization": organization or "",
@@ -367,7 +449,10 @@ def instructor_list(request):
         "scheduling/instructor_list.html",
         {
             "instructors": instructors,
-            "organizations": Organization.objects.filter(active=True),
+            "organizations": Organization.objects.filter(
+                active=True,
+                lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+            ),
             "selected_organization": organization or "",
             "managed_ids": managed_ids,
             "can_create": bool(managed_ids),

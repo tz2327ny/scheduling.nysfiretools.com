@@ -28,15 +28,18 @@ from scheduling.notifications import (
     notify_account_approved,
     notify_authorization_approved,
 )
+from scheduling.permissions import has_administration_access, managed_organizations
 
 from .forms import (
+    GeneralAccessRegistrationForm,
     InstructorApplicationReviewForm,
     InstructorRegistrationForm,
+    SchedulerEnrollmentForm,
     StatePasswordResetForm,
     StateUserCreateForm,
     StateUserForm,
 )
-from .models import ExternalAccessCode, InstructorApplication, UserOrganizationRole
+from .models import AccountProfile, ExternalAccessCode, InstructorApplication, UserOrganizationRole
 
 
 def _safe_external_return_path(value):
@@ -45,6 +48,12 @@ def _safe_external_return_path(value):
 
 
 def _external_user_agency(user):
+    try:
+        organization_name = user.nysfiretools_profile.organization_name
+        if organization_name:
+            return organization_name
+    except (AttributeError, AccountProfile.DoesNotExist):
+        pass
     try:
         return user.instructor_profile.home_organization.name
     except (AttributeError, Instructor.DoesNotExist):
@@ -113,6 +122,17 @@ def nysfiretools_sso_token(request):
             "name": user.get_full_name().strip() or email,
             "agency": _external_user_agency(user),
             "role": "admin" if user.is_superuser else "viewer",
+            "scheduler_status": getattr(
+                getattr(user, "nysfiretools_profile", None),
+                "scheduler_status",
+                AccountProfile.SchedulerStatus.ACTIVE if hasattr(user, "instructor_profile") else AccountProfile.SchedulerStatus.NOT_ENROLLED,
+            ),
+            "admin_organizations": list(
+                user.organization_roles.filter(
+                    role=UserOrganizationRole.Role.ADMINISTRATOR,
+                    organization__active=True,
+                ).values_list("organization_id", flat=True)
+            ),
             "return_to": access_code.return_path,
         }
     )
@@ -129,6 +149,21 @@ def state_admin_required(view_func):
     return wrapped
 
 
+@login_required
+def administration(request):
+    if not has_administration_access(request.user):
+        raise PermissionDenied("You do not have an administrative role.")
+    scope = managed_organizations(request.user)
+    return render(
+        request,
+        "accounts/administration.html",
+        {
+            "managed_organization_count": scope.count(),
+            "managed_organizations": scope[:12],
+        },
+    )
+
+
 def merge_existing_login_into_applicant(existing_user, applicant_user, application):
     """Consolidate access/history into the newly registered login."""
     applicant_user.groups.add(*existing_user.groups.all())
@@ -143,6 +178,20 @@ def merge_existing_login_into_applicant(existing_user, applicant_user, applicati
             organization=role.organization,
             role=role.role,
         )
+
+    existing_profile = AccountProfile.objects.filter(user=existing_user).first()
+    applicant_profile, _ = AccountProfile.objects.get_or_create(
+        user=applicant_user,
+        defaults={"signup_source": AccountProfile.SignupSource.SCHEDULER},
+    )
+    if existing_profile:
+        if existing_profile.access_status == AccountProfile.AccessStatus.ACTIVE:
+            applicant_profile.access_status = AccountProfile.AccessStatus.ACTIVE
+        if not applicant_profile.organization_id and existing_profile.organization_id:
+            applicant_profile.organization = existing_profile.organization
+        applicant_profile.access_reason = applicant_profile.access_reason or existing_profile.access_reason
+        applicant_profile.save()
+        existing_profile.delete()
 
     old_application = InstructorApplication.objects.filter(user=existing_user).first()
     if old_application and old_application.pk != application.pk:
@@ -165,6 +214,27 @@ def merge_existing_login_into_applicant(existing_user, applicant_user, applicati
     existing_user.delete()
 
 
+def account_access_start(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return render(request, "registration/access_choice.html")
+
+
+def general_register(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    form = GeneralAccessRegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            with transaction.atomic():
+                form.save()
+        except IntegrityError:
+            form.add_error("email", "An account already exists for this email address.")
+        else:
+            return redirect("registration_received")
+    return render(request, "registration/register_general.html", {"form": form})
+
+
 def instructor_register(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
@@ -182,6 +252,14 @@ def instructor_register(request):
                     travel_notes=form.cleaned_data["travel_notes"],
                 )
                 application.requested_courses.set(form.cleaned_data["requested_courses"])
+                AccountProfile.objects.create(
+                    user=user,
+                    access_status=AccountProfile.AccessStatus.PENDING,
+                    signup_source=AccountProfile.SignupSource.SCHEDULER,
+                    scheduler_status=AccountProfile.SchedulerStatus.PENDING,
+                    organization=form.cleaned_data["home_organization"],
+                    access_reason="Fire Training Scheduler enrollment",
+                )
         except IntegrityError:
             form.add_error("email", "An account already exists for this email address.")
         else:
@@ -191,6 +269,40 @@ def instructor_register(request):
 
 def registration_received(request):
     return render(request, "registration/registration_received.html")
+
+
+@login_required
+def scheduler_join(request):
+    profile, _ = AccountProfile.objects.get_or_create(
+        user=request.user,
+        defaults={
+            "access_status": AccountProfile.AccessStatus.ACTIVE,
+            "signup_source": AccountProfile.SignupSource.LEGACY,
+        },
+    )
+    if hasattr(request.user, "instructor_profile"):
+        if profile.scheduler_status != AccountProfile.SchedulerStatus.ACTIVE:
+            profile.scheduler_status = AccountProfile.SchedulerStatus.ACTIVE
+            profile.save(update_fields=("scheduler_status", "updated_at"))
+        messages.info(request, "Your account is already enrolled in the Scheduler.")
+        return redirect("dashboard")
+    application = InstructorApplication.objects.filter(user=request.user).first()
+    if application and application.status == InstructorApplication.Status.PENDING:
+        return render(
+            request,
+            "registration/scheduler_join_pending.html",
+            {"application": application},
+        )
+    form = SchedulerEnrollmentForm(
+        request.POST or None,
+        user=request.user,
+        application=application,
+    )
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            form.save()
+        return redirect("scheduler_join")
+    return render(request, "registration/scheduler_join.html", {"form": form})
 
 
 @state_admin_required
@@ -210,6 +322,10 @@ def user_list(request):
     pending_authorizations = CourseAuthorization.objects.filter(
         status=CourseAuthorization.Status.PENDING
     ).select_related("instructor__home_organization", "course")
+    pending_access_requests = AccountProfile.objects.filter(
+        access_status=AccountProfile.AccessStatus.PENDING,
+        user__instructor_application__isnull=True,
+    ).select_related("user", "organization")
     return render(
         request,
         "accounts/user_list.html",
@@ -217,6 +333,7 @@ def user_list(request):
             "users": users,
             "pending_applications": pending_applications,
             "pending_authorizations": pending_authorizations,
+            "pending_access_requests": pending_access_requests,
         },
     )
 
@@ -227,6 +344,14 @@ def user_create(request):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             user = form.save_with_roles()
+            AccountProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    "access_status": AccountProfile.AccessStatus.ACTIVE if user.is_active else AccountProfile.AccessStatus.PENDING,
+                    "signup_source": AccountProfile.SignupSource.ADMIN,
+                    "scheduler_status": AccountProfile.SchedulerStatus.ACTIVE if hasattr(user, "instructor_profile") else AccountProfile.SchedulerStatus.NOT_ENROLLED,
+                },
+            )
         messages.success(
             request,
             f"{user.get_full_name() or user.email} can now sign in.",
@@ -245,7 +370,20 @@ def user_edit(request, pk):
     form = StateUserForm(request.POST or None, instance=user, acting_user=request.user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            form.save_with_roles()
+            updated_user = form.save_with_roles()
+            profile, _ = AccountProfile.objects.get_or_create(
+                user=updated_user,
+                defaults={"signup_source": AccountProfile.SignupSource.LEGACY},
+            )
+            profile.access_status = (
+                AccountProfile.AccessStatus.ACTIVE
+                if updated_user.is_active
+                else AccountProfile.AccessStatus.SUSPENDED
+            )
+            if hasattr(updated_user, "instructor_profile"):
+                profile.scheduler_status = AccountProfile.SchedulerStatus.ACTIVE
+                profile.organization = updated_user.instructor_profile.home_organization
+            profile.save()
         messages.success(request, "User access was updated.")
         return redirect("user_list")
     return render(request, "accounts/user_form.html", {"form": form, "managed_user": user})
@@ -269,6 +407,41 @@ def user_password_reset(request, pk):
         "accounts/user_password_reset.html",
         {"form": form, "managed_user": user},
     )
+
+
+@require_POST
+@state_admin_required
+def access_request_approve(request, pk):
+    profile = get_object_or_404(
+        AccountProfile.objects.select_related("user"),
+        pk=pk,
+        access_status=AccountProfile.AccessStatus.PENDING,
+    )
+    profile.access_status = AccountProfile.AccessStatus.ACTIVE
+    profile.user.is_active = True
+    profile.user.save(update_fields=("is_active",))
+    profile.save(update_fields=("access_status", "updated_at"))
+    messages.success(
+        request,
+        f"{profile.user.get_full_name() or profile.user.email} can now use the protected NYSFIRETOOLS tools.",
+    )
+    return redirect("user_list")
+
+
+@require_POST
+@state_admin_required
+def access_request_reject(request, pk):
+    profile = get_object_or_404(
+        AccountProfile.objects.select_related("user"),
+        pk=pk,
+        access_status=AccountProfile.AccessStatus.PENDING,
+    )
+    profile.access_status = AccountProfile.AccessStatus.REJECTED
+    profile.user.is_active = False
+    profile.user.save(update_fields=("is_active",))
+    profile.save(update_fields=("access_status", "updated_at"))
+    messages.success(request, "The NYSFIRETOOLS access request was not approved.")
+    return redirect("user_list")
 
 
 @state_admin_required
@@ -324,6 +497,15 @@ def application_review(request, pk):
 
     user.is_active = True
     user.save(update_fields=("is_active",))
+    account_profile, _ = AccountProfile.objects.get_or_create(
+        user=user,
+        defaults={"signup_source": AccountProfile.SignupSource.SCHEDULER},
+    )
+    account_profile.access_status = AccountProfile.AccessStatus.ACTIVE
+    account_profile.scheduler_status = AccountProfile.SchedulerStatus.ACTIVE
+    account_profile.organization = application.home_organization
+    account_profile.requested_organization_name = ""
+    account_profile.save()
     application.status = InstructorApplication.Status.APPROVED
     application.instructor = instructor
     application.reviewed_at = timezone.now()
@@ -357,8 +539,16 @@ def application_reject(request, pk):
     application.reviewed_at = timezone.now()
     application.reviewed_by = request.user
     application.save(update_fields=("status", "reviewed_at", "reviewed_by"))
-    application.user.is_active = False
-    application.user.save(update_fields=("is_active",))
+    profile, _ = AccountProfile.objects.get_or_create(
+        user=application.user,
+        defaults={"signup_source": AccountProfile.SignupSource.SCHEDULER},
+    )
+    profile.scheduler_status = AccountProfile.SchedulerStatus.REJECTED
+    if profile.access_status == AccountProfile.AccessStatus.PENDING:
+        profile.access_status = AccountProfile.AccessStatus.REJECTED
+        application.user.is_active = False
+        application.user.save(update_fields=("is_active",))
+    profile.save()
     messages.success(request, "The instructor application was not approved.")
     return redirect("user_list")
 

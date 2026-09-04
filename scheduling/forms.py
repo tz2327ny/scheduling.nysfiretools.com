@@ -13,10 +13,17 @@ from .models import (
     InstructorAssignment,
     NotificationPreference,
     Organization,
+    OrganizationAlias,
     RecurringAvailabilityRule,
     TrainingEvent,
     TrainingSession,
+    normalize_organization_name,
 )
+
+
+def county_from_organization_name(name):
+    name = (name or "").strip()
+    return name[:-7].strip() if name.casefold().endswith(" county") else name
 
 
 class DateTimeInput(forms.DateTimeInput):
@@ -26,21 +33,59 @@ class DateTimeInput(forms.DateTimeInput):
 class OrganizationForm(forms.ModelForm):
     class Meta:
         model = Organization
-        fields = ("name", "short_name", "kind", "display_order", "active")
+        fields = (
+            "name",
+            "short_name",
+            "kind",
+            "parent",
+            "county_name",
+            "fdid_code",
+            "address",
+            "city",
+            "state",
+            "zip_code",
+            "phone_number",
+            "display_order",
+            "lifecycle_status",
+        )
         help_texts = {
-            "name": "Use the full official name, such as Albany County.",
+            "name": "Use the full official or legal name.",
             "short_name": "The shorter label shown in schedules and staffing screens.",
+            "parent": "Agencies should be assigned to their county authority.",
+            "fdid_code": "Use the NYS Fire Department Directory code when available.",
             "display_order": "Lower numbers appear first in organization lists.",
-            "active": "Inactive organizations remain in past records but cannot host new training.",
+            "lifecycle_status": "Use the dedicated merge action when one agency succeeds another.",
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["lifecycle_status"].required = False
+        self.fields["parent"].queryset = Organization.objects.filter(
+            active=True,
+            kind__in=(Organization.Kind.STATE, Organization.Kind.ACADEMY, Organization.Kind.COUNTY),
+        ).exclude(pk=self.instance.pk).order_by("kind", "county_name", "name")
 
     def clean_name(self):
         name = self.cleaned_data["name"].strip()
-        matches = Organization.objects.filter(name__iexact=name)
+        county_name = str(self.data.get("county_name", "")).strip()
+        kind = self.data.get("kind", "")
+        if kind == Organization.Kind.COUNTY and not county_name:
+            county_name = county_from_organization_name(name)
+        normalized = normalize_organization_name(name)
+        matches = Organization.objects.filter(
+            kind=kind,
+            county_name__iexact=county_name,
+            normalized_name=normalized,
+        )
         if self.instance.pk:
             matches = matches.exclude(pk=self.instance.pk)
         if matches.exists():
             raise forms.ValidationError("An organization with this name already exists.")
+        if OrganizationAlias.objects.filter(
+            county_name__iexact=county_name,
+            normalized_name=normalized,
+        ).exists():
+            raise forms.ValidationError("That name is already recorded as an alias of another organization.")
         return name
 
     def clean_short_name(self):
@@ -51,6 +96,55 @@ class OrganizationForm(forms.ModelForm):
         if matches.exists():
             raise forms.ValidationError("An organization with this short name already exists.")
         return short_name
+
+    def clean_fdid_code(self):
+        value = self.cleaned_data.get("fdid_code", "").strip().upper()
+        if not value:
+            return ""
+        county_name = str(self.data.get("county_name", "")).strip()
+        matches = Organization.objects.filter(county_name__iexact=county_name, fdid_code=value)
+        if self.instance.pk:
+            matches = matches.exclude(pk=self.instance.pk)
+        if matches.exists():
+            raise forms.ValidationError("That FDID is already assigned to an organization in this county.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        kind = cleaned.get("kind")
+        parent = cleaned.get("parent")
+        county_name = cleaned.get("county_name", "").strip()
+        if kind == Organization.Kind.COUNTY and not county_name:
+            county_name = county_from_organization_name(cleaned.get("name", ""))
+            cleaned["county_name"] = county_name
+        if kind == Organization.Kind.AGENCY:
+            if not county_name:
+                self.add_error("county_name", "Select or enter the agency's county.")
+            if parent and parent.kind != Organization.Kind.COUNTY:
+                self.add_error("parent", "A fire department or agency must be assigned to a county organization.")
+        if not cleaned.get("lifecycle_status"):
+            cleaned["lifecycle_status"] = Organization.LifecycleStatus.ACTIVE
+        if cleaned.get("lifecycle_status") == Organization.LifecycleStatus.MERGED and not self.instance.successor_id:
+            self.add_error("lifecycle_status", "Use the Merge organization action so records and aliases are transferred safely.")
+        return cleaned
+
+
+class OrganizationMergeForm(forms.Form):
+    target = forms.ModelChoiceField(
+        label="Merge into",
+        queryset=Organization.objects.none(),
+        help_text="The old organization remains on historical training records and becomes an alias of the selected successor.",
+    )
+
+    def __init__(self, *args, source, **kwargs):
+        self.source = source
+        super().__init__(*args, **kwargs)
+        self.fields["target"].queryset = Organization.objects.filter(
+            kind=source.kind,
+            county_name=source.county_name,
+            lifecycle_status=Organization.LifecycleStatus.ACTIVE,
+            active=True,
+        ).exclude(pk=source.pk).order_by("name")
 
 
 class AvailabilityBlockForm(forms.ModelForm):

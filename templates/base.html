@@ -20,6 +20,7 @@
         </div>
       </div>
       <nav class="nav-list">
+        {% if has_scheduler_access %}
         <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span aria-hidden="true">▦</span> Dashboard</a>
         <a class="nav-item {% if request.resolver_match.url_name == 'schedule' or 'training_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
         <a class="nav-item {% if 'course_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Courses</a>
@@ -29,9 +30,11 @@
         <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
         <a class="nav-item" href="{% url 'instructor_notifications' user.instructor_profile.pk %}"><span aria-hidden="true">✉</span> Notifications</a>
         {% endif %}
-        {% if user.is_superuser %}
-        <a class="nav-item {% if 'organization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'organization_list' %}"><span aria-hidden="true">⌂</span> Organizations</a>
-        <a class="nav-item {% if 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'user_list' %}"><span aria-hidden="true">⚙</span> Users</a>
+        {% else %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'scheduler_join' %}active{% endif %}" href="{% url 'scheduler_join' %}"><span aria-hidden="true">＋</span> Join Scheduler</a>
+        {% endif %}
+        {% if has_administration_access %}
+        <a class="nav-item {% if request.resolver_match.url_name == 'administration' or 'organization_' in request.resolver_match.url_name or 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'administration' %}"><span aria-hidden="true">⚙</span> Administration</a>
         {% endif %}
       </nav>
       <div class="sidebar-foot">
@@ -53,7 +56,7 @@
             <span><strong>{{ user.get_full_name|default:user.username }}</strong><small>{% if user.is_superuser %}Site administrator{% elif user.instructor_profile %}Instructor{% else %}Organization user{% endif %}</small></span>
           </div>
           <div class="account-actions">
-            {% if user.is_superuser %}<a class="text-link" href="{% url 'user_list' %}">Users</a>{% endif %}
+            {% if has_administration_access %}<a class="text-link" href="{% url 'administration' %}">Administration</a>{% endif %}
             <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-button" type="submit">Sign out</button></form>
           </div>
           {% else %}

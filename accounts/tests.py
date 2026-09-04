@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from scheduling.models import Course, CourseAuthorization, Instructor, Organization
 
-from .models import ExternalAccessCode, InstructorApplication, UserOrganizationRole
+from .models import AccountProfile, ExternalAccessCode, InstructorApplication, UserOrganizationRole
 
 
 User = get_user_model()
@@ -90,6 +90,8 @@ class NysfiretoolsSingleSignOnTests(TestCase):
                 "name": "Linked Instructor",
                 "agency": "Jefferson County",
                 "role": "viewer",
+                "scheduler_status": "active",
+                "admin_organizations": [],
                 "return_to": "/site-plan-builder",
             },
         )
@@ -296,6 +298,127 @@ class InstructorAccountWorkflowTests(TestCase):
 
         self.assertRedirects(response, reverse("dashboard"))
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
+
+    def test_general_access_request_does_not_enroll_user_in_scheduler(self):
+        response = self.client.post(
+            reverse("general_register"),
+            {
+                "first_name": "General",
+                "last_name": "User",
+                "email": "general@example.com",
+                "organization": self.jefferson.pk,
+                "requested_organization_name": "",
+                "access_reason": "Burn Plan Library",
+                "password1": self.password,
+                "password2": self.password,
+            },
+        )
+
+        self.assertRedirects(response, reverse("registration_received"))
+        user = User.objects.get(email="general@example.com")
+        self.assertFalse(user.is_active)
+        self.assertFalse(InstructorApplication.objects.filter(user=user).exists())
+        self.assertEqual(user.nysfiretools_profile.access_status, AccountProfile.AccessStatus.PENDING)
+        self.assertEqual(
+            user.nysfiretools_profile.scheduler_status,
+            AccountProfile.SchedulerStatus.NOT_ENROLLED,
+        )
+
+    def test_account_choice_explains_general_and_scheduler_registration(self):
+        response = self.client.get(reverse("account_access_start"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Library and planning access")
+        self.assertContains(response, "Join the Scheduler")
+        self.assertContains(response, reverse("general_register"))
+        self.assertContains(response, reverse("instructor_register"))
+
+    def test_approved_general_user_can_join_scheduler_with_same_account(self):
+        user = User.objects.create_user(
+            username="general.join@example.com",
+            email="general.join@example.com",
+            password=self.password,
+            is_active=True,
+        )
+        AccountProfile.objects.create(
+            user=user,
+            access_status=AccountProfile.AccessStatus.ACTIVE,
+            scheduler_status=AccountProfile.SchedulerStatus.NOT_ENROLLED,
+            organization=self.jefferson,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("scheduler_join"),
+            {
+                "sfi_number": "CFI-9876",
+                "phone": "315-555-0100",
+                "home_organization": self.jefferson.pk,
+                "travel_preference": Instructor.TravelPreference.LOCAL_ONLY,
+                "travel_notes": "",
+                "requested_courses": [self.course.pk],
+            },
+        )
+
+        self.assertRedirects(response, reverse("scheduler_join"))
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertEqual(User.objects.filter(email=user.email).count(), 1)
+        self.assertEqual(user.instructor_application.sfi_number, "CFI-9876")
+        self.assertEqual(
+            user.nysfiretools_profile.scheduler_status,
+            AccountProfile.SchedulerStatus.PENDING,
+        )
+
+    @override_settings(DEBUG=False)
+    def test_general_user_is_sent_to_join_page_instead_of_scheduler_dashboard(self):
+        user = User.objects.create_user(
+            username="general.only@example.com",
+            email="general.only@example.com",
+            password=self.password,
+            is_active=True,
+        )
+        AccountProfile.objects.create(
+            user=user,
+            access_status=AccountProfile.AccessStatus.ACTIVE,
+            scheduler_status=AccountProfile.SchedulerStatus.NOT_ENROLLED,
+            organization=self.jefferson,
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("dashboard"))
+
+        self.assertRedirects(response, reverse("scheduler_join"))
+
+    def test_rejected_scheduler_join_preserves_general_account_access(self):
+        user = User.objects.create_user(
+            username="general.rejected@example.com",
+            email="general.rejected@example.com",
+            password=self.password,
+            is_active=True,
+        )
+        profile = AccountProfile.objects.create(
+            user=user,
+            access_status=AccountProfile.AccessStatus.ACTIVE,
+            scheduler_status=AccountProfile.SchedulerStatus.PENDING,
+            organization=self.jefferson,
+        )
+        application = InstructorApplication.objects.create(
+            user=user,
+            sfi_number="MFI-2468",
+            home_organization=self.jefferson,
+            travel_preference=Instructor.TravelPreference.CONTACT_ME,
+        )
+        self.client.force_login(self.state_admin)
+
+        response = self.client.post(reverse("application_reject", args=[application.pk]))
+
+        self.assertRedirects(response, reverse("user_list"))
+        user.refresh_from_db()
+        profile.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertEqual(profile.access_status, AccountProfile.AccessStatus.ACTIVE)
+        self.assertEqual(profile.scheduler_status, AccountProfile.SchedulerStatus.REJECTED)
 
     def test_state_admin_reviews_application_and_approves_selected_course_claims(self):
         application = self.create_pending_application()

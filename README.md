@@ -9,6 +9,11 @@ This is an independent NYSFIRETOOLS beta project. It is not an official New York
 - Statewide dashboard and schedule awareness
 - Course library with a persistent Course Record Number and instructor staffing requirements
 - Statewide instructor directory covering all 62 New York counties and the Academy
+- One NYSFIRETOOLS account for protected tools, with optional Fire Training Scheduler enrollment
+- Separate general-access and Scheduler signup paths, plus later Scheduler enrollment from an existing account
+- State, county, academy, and department/agency authority levels
+- Department directory seeded from New York Open Data dataset `qfsu-zcpv`, with county-scoped duplicate protection
+- Safe agency-merger workflow that transfers current relationships while preserving historical training records and former-name aliases
 - Course-specific instructor authorizations
 - Instructor self-registration with Site Administrator account approval
 - Required SFI, CFI, or MFI number during self-registration, optional for administrator-created records
@@ -71,4 +76,6 @@ After deployment succeeds, add `scheduling.nysfiretools.com` as a Railway custom
 
 ## Administration
 
-Django superusers provide statewide/system administration. Organization administrators receive an `Organization administrator` role for the county or Academy they manage. County-scoped editing is enforced in application views; schedule visibility remains shared.
+Django superusers provide statewide/system administration from the central Administration page. Organization administrators receive an `Organization administrator` role at the State, county, academy, or department/agency level. State and academy scopes cover all active organizations, county scopes include agencies in that county, and agency scopes are limited to that agency. Scoped editing is enforced in scheduling views; schedule visibility remains shared.
+
+The bundled department seed is sourced from the official New York State Fire Department Directory (`https://data.ny.gov/resource/qfsu-zcpv`). Replacing the JSON snapshot requires reviewing same-county normalized-name duplicates and FDID inconsistencies before creating a new data migration.

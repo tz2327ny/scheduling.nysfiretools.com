@@ -7,7 +7,7 @@
 <form class="form-shell narrow" method="post" novalidate>
   {% csrf_token %}
   <section class="panel form-panel">
-    <div class="panel-header"><div><p class="eyebrow">State administration</p><h2>Organization details</h2><p>Counties added here become available for training hosts, instructor assignments, registrations, and administrator access.</p></div></div>
+    <div class="panel-header"><div><p class="eyebrow">Authority directory</p><h2>Organization details</h2><p>State, county, academy, and agency entries can serve as training authorities, account affiliations, and administrator scopes.</p></div></div>
     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
     <div class="form-grid">
       {% for field in form %}
