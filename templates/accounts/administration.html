@@ -19,7 +19,14 @@
   {% endif %}
 </section>
 
-{% if managed_organizations %}
+{% if user.is_superuser %}
+<section class="panel">
+  <div class="panel-header"><div><p class="eyebrow">Access level</p><h2>Global administrator</h2></div></div>
+  <div class="panel-body">
+    <p>You have statewide access to all NYSFIRETOOLS accounts, organizations, and Scheduler administration. Your authority is not limited to an individual county or agency.</p>
+  </div>
+</section>
+{% elif managed_organizations %}
 <section class="panel">
   <div class="panel-header"><div><p class="eyebrow">Assigned authority</p><h2>Organizations you manage</h2></div></div>
   <div class="data-table" role="table">

@@ -1,13 +1,14 @@
 from datetime import timedelta
 from functools import wraps
 import hashlib
+import hmac
 import re
 import secrets
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
@@ -15,7 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from scheduling.models import (
     AssistanceRequest,
@@ -138,6 +139,35 @@ def nysfiretools_sso_token(request):
     )
 
 
+@require_GET
+def nysfiretools_sso_sign_out(request):
+    """End the central account session after a signed main-site sign-out."""
+    configured_secret = settings.NYSFIRETOOLS_SSO_CLIENT_SECRET
+    expires = str(request.GET.get("expires", ""))
+    return_path = _safe_external_return_path(request.GET.get("return_to"))
+    supplied_signature = str(request.GET.get("signature", ""))
+    if not configured_secret or not expires.isdigit():
+        return JsonResponse({"error": "invalid_sign_out_request"}, status=400)
+
+    try:
+        expires_at = int(expires)
+    except ValueError:
+        return JsonResponse({"error": "invalid_sign_out_request"}, status=400)
+    if expires_at < int(timezone.now().timestamp()) or expires_at > int(timezone.now().timestamp()) + 300:
+        return JsonResponse({"error": "expired_sign_out_request"}, status=400)
+
+    expected_signature = hmac.new(
+        configured_secret.encode("utf-8"),
+        f"{expires}:{return_path}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not secrets.compare_digest(supplied_signature, expected_signature):
+        return JsonResponse({"error": "invalid_sign_out_request"}, status=400)
+
+    logout(request)
+    return redirect(f"{settings.NYSFIRETOOLS_MAIN_ORIGIN}{return_path}")
+
+
 def state_admin_required(view_func):
     @wraps(view_func)
     @login_required
@@ -153,12 +183,12 @@ def state_admin_required(view_func):
 def administration(request):
     if not has_administration_access(request.user):
         raise PermissionDenied("You do not have an administrative role.")
-    scope = managed_organizations(request.user)
+    scope = () if request.user.is_superuser else managed_organizations(request.user)
     return render(
         request,
         "accounts/administration.html",
         {
-            "managed_organization_count": scope.count(),
+            "managed_organization_count": 0 if request.user.is_superuser else scope.count(),
             "managed_organizations": scope[:12],
         },
     )

@@ -1,5 +1,7 @@
 import json
 from datetime import timedelta
+import hashlib
+import hmac
 from urllib.parse import parse_qs, urlparse
 from unittest.mock import MagicMock, patch
 
@@ -123,6 +125,32 @@ class NysfiretoolsSingleSignOnTests(TestCase):
         response = self.exchange_code(self.issue_code("/supporters/admin"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["role"], "admin")
+
+    def test_signed_main_site_sign_out_ends_scheduler_session(self):
+        self.client.force_login(self.user)
+        expires = str(int(timezone.now().timestamp()) + 60)
+        return_to = "/"
+        signature = hmac.new(
+            b"test-shared-secret-with-sufficient-length",
+            f"{expires}:{return_to}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        response = self.client.get(
+            reverse("nysfiretools_sso_sign_out"),
+            {"expires": expires, "return_to": return_to, "signature": signature},
+        )
+
+        self.assertRedirects(response, "https://www.nysfiretools.com/", fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_unsigned_main_site_sign_out_is_rejected(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("nysfiretools_sso_sign_out"))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("_auth_user_id", self.client.session)
 
 
 class CloudflareEmailBackendTests(TestCase):

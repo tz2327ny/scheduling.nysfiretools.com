@@ -1435,6 +1435,17 @@ class OrganizationManagementTests(TestCase):
         self.assertTrue(organization.active)
 
     @override_settings(DEBUG=False)
+    def test_global_administrator_sees_global_access_instead_of_scoped_list(self):
+        self.client.force_login(self.state_admin)
+
+        response = self.client.get(reverse("administration"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Global administrator")
+        self.assertContains(response, "Your authority is not limited")
+        self.assertNotContains(response, "Organizations you manage")
+
+    @override_settings(DEBUG=False)
     def test_organization_directory_is_paginated_and_searchable(self):
         self.client.force_login(self.state_admin)
 

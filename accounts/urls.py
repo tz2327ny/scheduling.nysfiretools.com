@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     path("nysfiretools/authorize/", views.nysfiretools_sso_authorize, name="nysfiretools_sso_authorize"),
     path("nysfiretools/token/", views.nysfiretools_sso_token, name="nysfiretools_sso_token"),
+    path("nysfiretools/sign-out/", views.nysfiretools_sso_sign_out, name="nysfiretools_sso_sign_out"),
     path("register/", views.account_access_start, name="account_access_start"),
     path("register/general/", views.general_register, name="general_register"),
     path("register/scheduler/", views.instructor_register, name="instructor_register"),
