@@ -1,8 +1,8 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Instructor registration · NYSFIRETOOLS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"><script src="{% static 'js/organization-picker.js' %}" defer></script></head>
-<body class="login-page">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Instructor registration · NYSFIRETOOLS Fire Training Scheduler</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260911-unified"><script src="{% static 'js/organization-picker.js' %}" defer></script>{% include 'site_navigation_assets.html' %}</head>
+<body class="login-page with-site-nav">{% include 'site_header.html' %}
   <main class="login-card registration-card">
     {% include 'registration/account_brand.html' %}
     <div class="login-copy"><p class="eyebrow">Scheduler enrollment</p><h1>Create an account and join the Scheduler</h1><p>Your SFI, CFI, or MFI number is required for Scheduler review. This creates one NYSFIRETOOLS account that also works with the Burn Plan Library and Site Plan Builder after approval.</p></div>

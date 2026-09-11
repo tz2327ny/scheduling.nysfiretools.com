@@ -1,5 +1,7 @@
 from urllib.parse import urlencode
 
+from django.conf import settings
+
 from django.urls import reverse
 
 from .permissions import has_administration_access, has_scheduler_access
@@ -7,6 +9,7 @@ from .permissions import has_administration_access, has_scheduler_access
 
 def access_context(request):
     return {
+        "main_site_origin": settings.NYSFIRETOOLS_MAIN_ORIGIN,
         "has_scheduler_access": has_scheduler_access(request.user),
         "has_administration_access": has_administration_access(request.user),
     }

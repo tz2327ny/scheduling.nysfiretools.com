@@ -10,6 +10,8 @@
 
 <section class="metric-grid">
   {% if user.is_superuser %}
+  <a class="metric-card" href="{{ main_site_origin }}/admin/usage"><span>Site usage</span><strong>Usage</strong><small>Daily page views and popular tools across NYSFIRETOOLS and Scheduler.</small></a>
+  <a class="metric-card" href="{{ main_site_origin }}/admin"><span>Main-site administration</span><strong>Shared resources</strong><small>Review burn plans, site plans and department logos.</small></a>
   <a class="metric-card" href="{% url 'user_list' %}"><span>Accounts and approvals</span><strong>Users</strong><small>Approve access, review Scheduler enrollment, assign roles, and manage passwords.</small></a>
   <a class="metric-card" href="{% url 'organization_list' %}"><span>Authority directory</span><strong>Organizations</strong><small>Manage State, county, academy, department, and merger records.</small></a>
   <a class="metric-card" href="{% url 'course_list' %}"><span>Training configuration</span><strong>Courses</strong><small>Maintain the course library and unit staffing requirements.</small></a>

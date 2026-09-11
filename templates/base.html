@@ -7,63 +7,37 @@
   <meta name="description" content="Independent course scheduling, instructor availability, and staffing coordination from NYSFIRETOOLS.">
   <title>{% block title %}NYSFIRETOOLS Fire Training Scheduler{% endblock %}</title>
   <link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260911-unified">
+  {% include 'site_navigation_assets.html' %}
   <script src="{% static 'js/organization-picker.js' %}" defer></script>
 </head>
-<body>
+<body class="scheduler-page">
   <a class="skip-link" href="#main-content">Skip to content</a>
-  <header class="mobile-navigation" aria-label="Scheduler navigation">
-    <div class="mobile-brand-row">
-      <a href="https://nysfiretools.com/" class="mobile-home"><img src="{% static 'images/nysfiretools-logo.png' %}" alt="">NYS Fire Tools home</a>
-      <button type="button" class="menu-toggle" aria-controls="scheduler-sidebar" aria-expanded="false" hidden>Menu <span aria-hidden="true">☰</span></button>
-    </div>
-    <nav class="mobile-shortcuts" aria-label="Quick navigation">
-      {% if has_scheduler_access %}
-      <a href="{% url 'dashboard' %}" {% if nav_section == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
-      <a href="{% url 'schedule' %}" {% if nav_section == 'schedule' %}aria-current="page"{% endif %}>Schedule</a>
-      {% if user.is_authenticated and user.instructor_profile %}<a href="{% url 'instructor_availability' user.instructor_profile.pk %}">My availability</a>{% else %}<a href="{% url 'instructor_list' %}" {% if nav_section == 'instructors' %}aria-current="page"{% endif %}>Instructors</a>{% endif %}
-      {% else %}
-      <a href="https://nysfiretools.com/">All tools</a><a href="{% url 'scheduler_join' %}" {% if nav_section == 'enrollment' %}aria-current="page"{% endif %}>Join Scheduler</a>
-      {% if has_administration_access %}<a href="{% url 'administration' %}">Administration</a>{% endif %}
-      {% endif %}
-    </nav>
-  </header>
-  <div class="app-shell">
-    <aside class="sidebar" id="scheduler-sidebar" aria-label="Main navigation">
-      <a class="brand" href="https://nysfiretools.com/" aria-label="NYS Fire Tools home">
-        <img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com">
-        <div>
-          <strong>NYSFIRETOOLS</strong>
-          <span>Fire Training Scheduler</span>
-        </div>
-      </a>
-      <a class="portal-home" href="https://nysfiretools.com/">← NYS Fire Tools home</a>
-      <nav class="nav-list" aria-label="Fire Training Scheduler">
+  {% include 'site_header.html' %}
+  <div class="scheduler-workspace">
+    <details class="scheduler-navigation" open>
+      <summary>Scheduler menu</summary>
+      <nav class="scheduler-links" aria-label="Fire Training Scheduler"><span class="scheduler-nav-label">Scheduler</span>
         {% if has_scheduler_access %}
-        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span aria-hidden="true">▦</span> Dashboard</a>
-        <a class="nav-item {% if request.resolver_match.url_name == 'schedule' or 'training_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
-        <a class="nav-item {% if 'course_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Courses</a>
-        <a class="nav-item {% if nav_section == 'instructors' %}active{% endif %}" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'schedule' or 'training_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'schedule' %}">Schedule</a>
+        <a class="nav-item {% if 'course_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'course_list' %}">Courses</a>
+        <a class="nav-item {% if nav_section == 'instructors' %}active{% endif %}" href="{% url 'instructor_list' %}">Instructors</a>
         {% if user.is_authenticated and user.instructor_profile %}
-        <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>
-        <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
-        <a class="nav-item" href="{% url 'instructor_notifications' user.instructor_profile.pk %}"><span aria-hidden="true">✉</span> Notifications</a>
+        <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}">My availability</a>
+        <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}">My authorizations</a>
+        <a class="nav-item" href="{% url 'instructor_notifications' user.instructor_profile.pk %}">Notifications</a>
         {% endif %}
         {% else %}
-        <a class="nav-item {% if request.resolver_match.url_name == 'scheduler_join' %}active{% endif %}" href="{% url 'scheduler_join' %}"><span aria-hidden="true">＋</span> Join Scheduler</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'scheduler_join' %}active{% endif %}" href="{% url 'scheduler_join' %}">Join Scheduler</a>
         {% endif %}
         {% if has_administration_access %}
-        <a class="nav-item {% if request.resolver_match.url_name == 'administration' or 'organization_' in request.resolver_match.url_name or 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'administration' %}"><span aria-hidden="true">⚙</span> Administration</a>
+        <a class="nav-item {% if request.resolver_match.url_name == 'administration' or 'organization_' in request.resolver_match.url_name or 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'administration' %}">Administration</a>
         {% endif %}
       </nav>
-      {% if user.is_authenticated %}<div class="mobile-account"><strong>{{ user.get_full_name|default:user.username }}</strong><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="menu-toggle" type="submit">Sign out</button></form></div>{% endif %}
-      <div class="sidebar-foot">
-        <strong class="region-label">Independent beta</strong>
-        <p>Not an official New York State or State Fire system. Not formally approved or endorsed.</p>
-      </div>
-    </aside>
-
-    <main class="main-content" id="main-content" tabindex="-1">
+    </details>
+  </div>
+  <main class="main-content" id="main-content" tabindex="-1">
       <header class="topbar">
         <div>
           <p class="eyebrow">Fire Training Scheduler</p>
@@ -85,7 +59,7 @@
         </div>
       </header>
       <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="https://nysfiretools.com/">NYS Fire Tools</a><span aria-hidden="true">/</span>
+        <a href="{{ main_site_origin }}/">NYS Fire Tools</a><span aria-hidden="true">/</span>
         {% if nav_section == 'dashboard' %}<span aria-current="page">Dashboard</span>{% else %}
         {% if has_scheduler_access %}<a href="{% url 'dashboard' %}">Dashboard</a><span aria-hidden="true">/</span>{% endif %}
         {% if nav_section == 'users' or nav_section == 'organizations' %}<a href="{% url 'administration' %}">Administration</a><span aria-hidden="true">/</span>{% endif %}
@@ -101,9 +75,9 @@
       </div>
       {% endif %}
       {% block content %}{% endblock %}
-    </main>
-  </div>
-  <script src="{% static 'js/navigation.js' %}"></script>
+    <p class="independence-note">Independent instructor resource. Not an official New York State or State Fire system; not formally approved or endorsed.</p>
+  </main>
+  <script src="{% static 'js/navigation.js' %}?v=20260911-unified"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

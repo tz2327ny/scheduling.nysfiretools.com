@@ -1,0 +1,14 @@
+{% load static %}
+<header class="site-header" data-site-header>
+  <a class="brand" href="{{ main_site_origin }}/"><img src="{% static 'images/nysfiretools-logo.png' %}" alt=""> nysfiretools.com</a>
+  <nav class="nav" aria-label="Primary navigation">
+    <a href="{{ main_site_origin }}/">Home</a>
+    <a href="{{ main_site_origin }}/weather">Weather &amp; AQI</a>
+    <a href="{{ main_site_origin }}/forms">OFPC Forms</a>
+    <a href="{{ main_site_origin }}/burn-plans">Burn Plans</a>
+    <a href="{{ main_site_origin }}/site-plan-builder">Site Plan Builder</a>
+    <a href="{{ main_site_origin }}/who-uses-nysfiretools">Who Uses NYSFIRETOOLS?</a>
+    <a href="{% url 'dashboard' %}" class="active" aria-current="page">Scheduler</a>
+    <a class="nav-feedback" href="{{ main_site_origin }}/#feedback"><span aria-hidden="true">✦</span> Feedback / Request a Feature</a>
+  </nav>
+</header>

@@ -1,9 +1,11 @@
 from django.urls import path
 
 from . import views
+from .usage import usage_summary
 
 
 urlpatterns = [
+    path("nysfiretools/usage/", usage_summary, name="usage_summary"),
     path("logout/", views.nysfiretools_full_sign_out, name="logout"),
     path("nysfiretools/authorize/", views.nysfiretools_sso_authorize, name="nysfiretools_sso_authorize"),
     path("nysfiretools/token/", views.nysfiretools_sso_token, name="nysfiretools_sso_token"),

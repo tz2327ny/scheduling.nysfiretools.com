@@ -1,8 +1,8 @@
 {% load static %}
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYSFIRETOOLS</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
-<body class="login-page">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYSFIRETOOLS</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260911-unified">{% include 'site_navigation_assets.html' %}</head>
+<body class="login-page with-site-nav">{% include 'site_header.html' %}
   <main class="login-card">
     {% include 'registration/account_brand.html' %}
     <div class="login-copy"><p class="eyebrow">One account for every protected tool</p><h1>Sign in to NYSFIRETOOLS</h1><p>Use your active NYSFIRETOOLS account for the Fire Training Scheduler, Burn Plan Repository, Site Plan Builder and department submissions.</p></div>

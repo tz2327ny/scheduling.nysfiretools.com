@@ -76,6 +76,10 @@ After deployment succeeds, add `scheduling.nysfiretools.com` as a Railway custom
 
 ## Administration
 
+The global NYSFIRETOOLS header is shared with the main site, including account/sign-in pages. Global destinations stay in the same tab; the Scheduler-specific menu lives directly underneath. Mobile always exposes Home, a global Menu button, and a separate Scheduler menu. Keep `static/css/site-navigation.css` and `static/js/site-navigation.js` identical to the main site's `public/assets` copies. This is a presentation change, not an account/cookie/domain migration.
+
+Global administrators can reach Visits and Popular Tools from Administration. The dashboard lives at the main site's `/admin/usage`. Migration `accounts.0012_usagedaily` adds only aggregate daily counts (date, fixed tool code, views). Successful tool-page GETs count once; auth/admin, errors, redirects, downloads, recognized bots and prefetches are excluded. No user IDs, IPs, request URLs or content are stored. The main server reads the aggregate-only `/accounts/nysfiretools/usage/` endpoint using the existing SSO secret and a purpose-scoped HMAC valid for 60 seconds. Unsigned browser requests are forbidden. No new configuration is needed. History is not backfilled.
+
 Django superusers provide statewide/system administration from the central Administration page. Organization administrators receive an `Organization administrator` role at the State, county, academy, or department/agency level. State and academy scopes cover all active organizations, county scopes include agencies in that county, and agency scopes are limited to that agency. Scoped editing is enforced in scheduling views; schedule visibility remains shared.
 
 The bundled department seed is sourced from the official New York State Fire Department Directory (`https://data.ny.gov/resource/qfsu-zcpv`). Replacing the JSON snapshot requires reviewing same-county normalized-name duplicates and FDID inconsistencies before creating a new data migration.

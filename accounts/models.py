@@ -2,6 +2,20 @@ from django.conf import settings
 from django.db import models
 
 
+class UsageDaily(models.Model):
+    """Aggregate page views only. No user, request or visitor information."""
+
+    day = models.DateField()
+    tool = models.CharField(max_length=32)
+    views = models.PositiveBigIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("day", "tool"), name="unique_usage_day_tool")
+        ]
+        ordering = ("day", "tool")
+
+
 class AccountProfile(models.Model):
     """Site-wide access state kept separate from optional Scheduler enrollment."""
 
