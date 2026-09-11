@@ -4,7 +4,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · NYSFIRETOOLS</title><link rel="icon" href="{% static 'images/nysfiretools-logo.png' %}" type="image/png"><link rel="stylesheet" href="{% static 'css/app.css' %}"></head>
 <body class="login-page">
   <main class="login-card">
-    <div class="brand dark"><img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com"><div><strong>NYSFIRETOOLS</strong><span>Account Access</span></div></div>
+    {% include 'registration/account_brand.html' %}
     <div class="login-copy"><p class="eyebrow">One account for every protected tool</p><h1>Sign in to NYSFIRETOOLS</h1><p>Use your active NYSFIRETOOLS account for the Fire Training Scheduler, Burn Plan Repository, Site Plan Builder and department submissions.</p></div>
     <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button primary" type="submit">Sign in</button></form>
     <p class="login-alternate"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>

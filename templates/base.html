@@ -11,21 +11,39 @@
   <script src="{% static 'js/organization-picker.js' %}" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="mobile-navigation" aria-label="Scheduler navigation">
+    <div class="mobile-brand-row">
+      <a href="https://nysfiretools.com/" class="mobile-home"><img src="{% static 'images/nysfiretools-logo.png' %}" alt="">NYS Fire Tools home</a>
+      <button type="button" class="menu-toggle" aria-controls="scheduler-sidebar" aria-expanded="false" hidden>Menu <span aria-hidden="true">☰</span></button>
+    </div>
+    <nav class="mobile-shortcuts" aria-label="Quick navigation">
+      {% if has_scheduler_access %}
+      <a href="{% url 'dashboard' %}" {% if nav_section == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+      <a href="{% url 'schedule' %}" {% if nav_section == 'schedule' %}aria-current="page"{% endif %}>Schedule</a>
+      {% if user.is_authenticated and user.instructor_profile %}<a href="{% url 'instructor_availability' user.instructor_profile.pk %}">My availability</a>{% else %}<a href="{% url 'instructor_list' %}" {% if nav_section == 'instructors' %}aria-current="page"{% endif %}>Instructors</a>{% endif %}
+      {% else %}
+      <a href="https://nysfiretools.com/">All tools</a><a href="{% url 'scheduler_join' %}" {% if nav_section == 'enrollment' %}aria-current="page"{% endif %}>Join Scheduler</a>
+      {% if has_administration_access %}<a href="{% url 'administration' %}">Administration</a>{% endif %}
+      {% endif %}
+    </nav>
+  </header>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Main navigation">
-      <div class="brand">
+    <aside class="sidebar" id="scheduler-sidebar" aria-label="Main navigation">
+      <a class="brand" href="https://nysfiretools.com/" aria-label="NYS Fire Tools home">
         <img class="brand-logo" src="{% static 'images/nysfiretools-logo.png' %}" alt="NYSFIRETOOLS.com">
         <div>
           <strong>NYSFIRETOOLS</strong>
           <span>Fire Training Scheduler</span>
         </div>
-      </div>
-      <nav class="nav-list">
+      </a>
+      <a class="portal-home" href="https://nysfiretools.com/">← NYS Fire Tools home</a>
+      <nav class="nav-list" aria-label="Fire Training Scheduler">
         {% if has_scheduler_access %}
         <a class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span aria-hidden="true">▦</span> Dashboard</a>
         <a class="nav-item {% if request.resolver_match.url_name == 'schedule' or 'training_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'schedule' %}"><span aria-hidden="true">□</span> Schedule</a>
         <a class="nav-item {% if 'course_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'course_list' %}"><span aria-hidden="true">≡</span> Courses</a>
-        <a class="nav-item {% if 'instructor_' in request.resolver_match.url_name or 'availability_' in request.resolver_match.url_name or 'recurring_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
+        <a class="nav-item {% if nav_section == 'instructors' %}active{% endif %}" href="{% url 'instructor_list' %}"><span aria-hidden="true">◎</span> Instructors</a>
         {% if user.is_authenticated and user.instructor_profile %}
         <a class="nav-item" href="{% url 'instructor_availability' user.instructor_profile.pk %}"><span aria-hidden="true">◷</span> My availability</a>
         <a class="nav-item" href="{% url 'instructor_authorizations' user.instructor_profile.pk %}"><span aria-hidden="true">✓</span> My authorizations</a>
@@ -38,16 +56,17 @@
         <a class="nav-item {% if request.resolver_match.url_name == 'administration' or 'organization_' in request.resolver_match.url_name or 'user_' in request.resolver_match.url_name or 'application_' in request.resolver_match.url_name or 'authorization_' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'administration' %}"><span aria-hidden="true">⚙</span> Administration</a>
         {% endif %}
       </nav>
+      {% if user.is_authenticated %}<div class="mobile-account"><strong>{{ user.get_full_name|default:user.username }}</strong><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="menu-toggle" type="submit">Sign out</button></form></div>{% endif %}
       <div class="sidebar-foot">
         <strong class="region-label">Independent beta</strong>
         <p>Not an official New York State or State Fire system. Not formally approved or endorsed.</p>
       </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content" tabindex="-1">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Independent instructor coordination</p>
+          <p class="eyebrow">Fire Training Scheduler</p>
           <h1>{% block page_title %}Dashboard{% endblock %}</h1>
         </div>
         <div class="topbar-actions">
@@ -65,6 +84,17 @@
           {% endif %}
         </div>
       </header>
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="https://nysfiretools.com/">NYS Fire Tools</a><span aria-hidden="true">/</span>
+        {% if nav_section == 'dashboard' %}<span aria-current="page">Dashboard</span>{% else %}
+        {% if has_scheduler_access %}<a href="{% url 'dashboard' %}">Dashboard</a><span aria-hidden="true">/</span>{% endif %}
+        {% if nav_section == 'users' or nav_section == 'organizations' %}<a href="{% url 'administration' %}">Administration</a><span aria-hidden="true">/</span>{% endif %}
+        {% if nav_is_section_root %}<span aria-current="page">{{ nav_section_label }}</span>{% else %}
+        <a href="{{ nav_parent_url }}">{{ nav_section_label }}</a><span aria-hidden="true">/</span>
+        {% block breadcrumb_current %}<span aria-current="page">{% if instructor %}{{ instructor.full_name }} · {% elif managed_user %}{{ managed_user.get_full_name|default:managed_user.email }} · {% endif %}{{ nav_page_label }}</span>{% endblock %}
+        {% endif %}{% endif %}
+      </nav>
+      {% if not nav_is_section_root %}<a class="back-link" href="{{ nav_back_url }}">← Back to {{ nav_back_label|lower }}</a>{% endif %}
       {% if messages %}
       <div class="message-stack" aria-live="polite">
         {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
@@ -73,6 +103,7 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+  <script src="{% static 'js/navigation.js' %}"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>

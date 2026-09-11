@@ -23,6 +23,7 @@
     </select>
   </label>
   <button class="button secondary" type="submit">Apply filters</button>
+  {% if selected_status or selected_organization %}<a class="button secondary" href="{% url 'schedule' %}">Clear filters</a>{% endif %}
 </form>
 
 <section class="panel table-panel">

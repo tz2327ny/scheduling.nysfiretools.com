@@ -330,6 +330,9 @@ def schedule(request):
     )
     status = request.GET.get("status")
     organization = request.GET.get("organization")
+    request.session["schedule_filters"] = {
+        "status": status or "", "organization": organization or ""
+    }
     if status:
         events = events.filter(status=status)
     if organization:
@@ -654,6 +657,7 @@ def session_assignment_add(request, pk, session_pk):
         assignment = form.save()
         notify_assignment(assignment)
         messages.success(request, "Instructor was assigned to this course unit.")
+        return redirect(reverse("training_detail", args=[event.pk]) + f"#unit-{session_pk}")
     else:
         error_text = " ".join(
             error for errors in form.errors.values() for error in errors
@@ -678,7 +682,7 @@ def session_assignment_remove(request, pk, session_pk, assignment_pk):
     assignment.delete()
     notify_assignment(assignment, removed=True)
     messages.success(request, f"{instructor_name} was removed from this course unit.")
-    return redirect("training_detail", pk=event.pk)
+    return redirect(reverse("training_detail", args=[event.pk]) + f"#unit-{session_pk}")
 
 
 @login_required_unless_debug
@@ -753,7 +757,7 @@ def training_edit(request, pk):
     return render(
         request,
         "scheduling/training_form.html",
-        {"form": form, "formset": formset, "page_heading": "Edit training"},
+        {"form": form, "formset": formset, "page_heading": "Edit training", "event": event},
     )
 
 

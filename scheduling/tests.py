@@ -672,6 +672,11 @@ class AuthenticationTests(TestCase):
 class DashboardOrganizationFilterTests(SchedulingTestCase):
     def setUp(self):
         super().setUp()
+        # These filter tests need upcoming sessions regardless of today's date.
+        self.starts_at = timezone.now() + timedelta(days=1)
+        self.session.starts_at = self.starts_at
+        self.session.ends_at = self.starts_at + timedelta(hours=8)
+        self.session.save(update_fields=("starts_at", "ends_at"))
         self.user = get_user_model().objects.create_user(
             username="dashboard@example.com",
             password="test-password",

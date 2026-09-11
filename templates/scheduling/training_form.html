@@ -2,6 +2,7 @@
 {% load static %}
 {% block title %}{{ page_heading }} · NYSFIRETOOLS{% endblock %}
 {% block page_title %}{{ page_heading }}{% endblock %}
+{% block breadcrumb_current %}{% if event %}<a href="{% url 'training_detail' event.pk %}">{{ event.course.name }}</a><span aria-hidden="true">/</span>{% endif %}<span aria-current="page">{{ page_heading }}</span>{% endblock %}
 {% block content %}
 <form class="form-shell" method="post" novalidate>
   {% csrf_token %}
@@ -13,11 +14,12 @@
   {% if is_create %}
   <div class="notice-card"><span class="notice-icon">i</span><p><strong>The unit schedule is created from the course matrix.</strong> Save this Purposed offering, then enter a date and time for every unit.</p></div>
   {% else %}
+  <nav class="unit-jump" aria-label="Jump to unit dates">{% for session_form in formset %}<a href="#edit-unit-{{ session_form.instance.pk }}">{% if session_form.instance.course_unit %}Unit {{ session_form.instance.course_unit.unit_number }}{% else %}Session {{ forloop.counter }}{% endif %}</a>{% endfor %}</nav>
   <section class="panel form-panel">
     <div class="panel-header"><div><p class="eyebrow">Unit-by-unit schedule</p><h2>Course unit dates and times</h2><p>Dates may remain blank while Purposed. Entering a start automatically suggests an end three hours later; you can adjust it as needed. Every active unit requires a date and time before Confirmed.</p></div></div>
     {{ formset.management_form }}
     {% for session_form in formset %}
-    <div class="unit-session-form">
+    <div class="unit-session-form" id="edit-unit-{{ session_form.instance.pk }}">
       {% for hidden in session_form.hidden_fields %}{{ hidden }}{% endfor %}
       <div class="unit-session-label"><span class="course-code">Unit {{ session_form.instance.course_unit.unit_number }}</span><strong>{{ session_form.instance.course_unit.title|default:"Course unit" }}</strong><small>{{ session_form.instance.course_unit.required_instructors }} instructor{{ session_form.instance.course_unit.required_instructors|pluralize }} required{% if session_form.instance.course_unit.requires_safety_officer %} + safety officer{% endif %}</small></div>
       {% if session_form.non_field_errors %}<div class="form-errors">{{ session_form.non_field_errors }}</div>{% endif %}
@@ -26,7 +28,7 @@
     {% endfor %}
   </section>
   {% endif %}
-  <div class="form-actions"><a class="button secondary" href="{% url 'schedule' %}">Cancel</a><button class="button primary" type="submit">Save training</button></div>
+  <div class="form-actions"><a class="button secondary" href="{% if event %}{% url 'training_detail' event.pk %}{% else %}{{ schedule_return_url }}{% endif %}">Cancel</a><button class="button primary" type="submit">Save training</button></div>
 </form>
 {% endblock %}
 {% block extra_scripts %}<script src="{% static 'js/training-schedule.js' %}"></script>{% endblock %}

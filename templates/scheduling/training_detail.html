@@ -1,16 +1,18 @@
 {% extends 'base.html' %}
 {% block title %}{{ event.course.name }} · NYSFIRETOOLS{% endblock %}
 {% block page_title %}{{ event.course.name }}{% endblock %}
+{% block breadcrumb_current %}<span aria-current="page">{{ event.course.name }}</span>{% endblock %}
 {% block content %}
 <section class="detail-hero">
   <div><div class="detail-badges"><span class="course-code">Record {{ event.course.record_number }}</span>{% if event.offering_number %}<span class="course-code">Offering {{ event.offering_number }}</span>{% endif %}<span class="status {{ event.status }}">{{ event.get_status_display }}</span>{% if event.course.instructor_intensive %}<span class="intensive">Instructor intensive</span>{% endif %}</div><p>{{ event.host_organization.name }} · {{ event.location_name }}</p></div>
   <div class="toolbar-actions">{% if event.acadis_registration_url %}<a class="button secondary" href="{{ event.acadis_registration_url }}" target="_blank" rel="noopener">Open Acadis registration ↗</a>{% endif %}{% if can_manage %}<a class="button primary" href="{% url 'training_edit' event.pk %}">Edit unit dates</a>{% endif %}</div>
 </section>
 {% if unscheduled_units %}<div class="notice-card warning-card"><span class="notice-icon">!</span><p><strong>{{ unscheduled_units }} unit{{ unscheduled_units|pluralize }} still need dates.</strong> Every active course unit must be scheduled before this offering can be Confirmed.</p></div>{% endif %}
+<nav class="unit-jump" aria-label="Jump to a course unit">{% for row in session_rows %}<a href="#unit-{{ row.session.pk }}">{% if row.session.course_unit %}Unit {{ row.session.course_unit.unit_number }}{% else %}Session {{ forloop.counter }}{% endif %}</a>{% endfor %}</nav>
 <section class="detail-grid">
   <div class="detail-main">
     {% for row in session_rows %}
-    <article class="panel session-card {% if not row.session.is_scheduled %}unscheduled{% endif %}">
+    <article id="unit-{{ row.session.pk }}" class="panel session-card {% if not row.session.is_scheduled %}unscheduled{% endif %}">
       <div class="panel-header">
         <div><p class="eyebrow">{% if row.session.course_unit %}Unit {{ row.session.course_unit.unit_number }}{% else %}Training session{% endif %}</p><h2>{% if row.session.course_unit.title %}{{ row.session.course_unit.title }}{% elif row.session.is_scheduled %}{{ row.session.starts_at|date:"l, F j, Y" }}{% else %}Date required{% endif %}</h2></div>
         <div class="unit-session-summary"><strong>{{ row.required_instructors }} instructor{{ row.required_instructors|pluralize }} required{% if row.requires_safety %} + safety officer{% endif %}</strong>{% if row.session.is_scheduled %}<span>{{ row.session.starts_at|date:"D, M j · g:i A" }}–{{ row.session.ends_at|date:"g:i A" }}</span>{% else %}<span class="status proposed">Unscheduled</span>{% endif %}</div>
