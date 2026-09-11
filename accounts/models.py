@@ -3,11 +3,12 @@ from django.db import models
 
 
 class UsageDaily(models.Model):
-    """Aggregate page views only. No user, request or visitor information."""
+    """Page totals and audience sketches; no identities or individual events."""
 
     day = models.DateField()
     tool = models.CharField(max_length=32)
     views = models.PositiveBigIntegerField(default=0)
+    reach = models.JSONField(null=True, default=None, blank=True)
 
     class Meta:
         constraints = [

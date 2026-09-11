@@ -33,7 +33,7 @@ class UsageTests(TestCase):
         self.page(route="instructor_availability")
         self.assertEqual(UsageDaily.objects.get(tool="schedule").views, 2)
         self.assertEqual(UsageDaily.objects.count(), 2)
-        self.assertEqual({f.name for f in UsageDaily._meta.fields}, {"id", "day", "tool", "views"})
+        self.assertEqual({f.name for f in UsageDaily._meta.fields}, {"id", "day", "tool", "views", "reach"})
 
     def test_auth_admin_assets_redirects_bots_and_prefetches_are_excluded(self):
         for route in ("login", "administration", "user_list", "organization_list", "health", "usage_summary", None):
@@ -59,7 +59,7 @@ class UsageTests(TestCase):
         response = self.client.get(reverse("usage_summary"), {"days": 7}, **self.signed_headers())
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Cache-Control"], "private, no-store")
-        self.assertEqual(response.json(), {"firstDay": str(today - timedelta(days=15)), "rows": [{"day": str(today), "tool": "schedule", "views": 7}]})
+        self.assertEqual(response.json(), {"firstDay": str(today - timedelta(days=15)), "reachVersion": 1, "firstReachDay": None, "rows": [{"day": str(today), "tool": "schedule", "views": 7, "reach": None}]})
         self.assertEqual(UsageDaily.objects.count(), 2)
 
     def test_unsigned_expired_wrong_scope_and_invalid_range_are_denied(self):
